@@ -1,0 +1,39 @@
+import { defineConfig } from 'vitepress'
+import { zhConfig, zhSearch } from './configs/zh.mts'
+import { enConfig } from './configs/en.mts'
+
+// https://vitepress.dev/reference/site-config
+export default defineConfig({
+  // 多个 SDK 文档共用此站点，通过顶部「产品」切换系列
+  title: 'Insta360 SDK/API Docs',
+  lastUpdated: true,
+  cleanUrls: true,
+  metaChunk: true,
+
+  head: [
+    ['link', { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' }],
+    ['meta', { name: 'theme-color', content: '#0a84ff' }]
+  ],
+
+  // 国际化：中文在 /ch/，英文在 /en/；站点根 / 由 docs/index.md 重定向到 /ch/
+  locales: {
+    ch: { ...zhConfig },
+    en: { ...enConfig }
+  },
+
+  themeConfig: {
+    // 导航栏 logo：影石 Insta360 官方标志（黑字黄底）
+    logo: '/insta360-logo.png',
+    // siteTitle 按语言在 zh.mts / en.mts 中各自覆盖（避免与 logo 里的 Insta360 重复）
+
+    // 本地搜索（多语言）
+    search: {
+      provider: 'local',
+      options: {
+        locales: { ...zhSearch }
+      }
+    },
+
+    socialLinks: [{ icon: 'github', link: 'https://github.com/' }]
+  }
+})

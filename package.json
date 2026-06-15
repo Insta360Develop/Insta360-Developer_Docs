@@ -1,0 +1,15 @@
+{
+  "name": "sdk-docs",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "PATH=\"/opt/homebrew/bin:$PATH\" vitepress dev docs",
+    "build": "PATH=\"/opt/homebrew/bin:$PATH\" vitepress build docs",
+    "preview": "PATH=\"/opt/homebrew/bin:$PATH\" vitepress preview docs"
+  },
+  "devDependencies": {
+    "vitepress": "^1.6.4",
+    "vue": "^3.5.38"
+  }
+}

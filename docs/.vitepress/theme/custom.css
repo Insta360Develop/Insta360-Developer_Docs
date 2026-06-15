@@ -1,0 +1,232 @@
+/**
+ * 主题定制：Insta360 影石黄 (#FFD200) + 黑
+ * 设计原则：黄色用于「点缀 / 按钮 / 强调」等大色块与交互高亮，
+ * 文字与链接用炭灰/黑保证可读，避免亮黄小字在白底上看不清。
+ * 参考：https://vitepress.dev/guide/extending-default-theme
+ */
+
+:root {
+  /* 品牌色 */
+  --vp-c-brand-1: #1f1f1f; /* 主交互色：链接、激活态、导航高亮（沉稳、可读） */
+  --vp-c-brand-2: #000000;
+  --vp-c-brand-3: #ffd200; /* 影石黄：按钮、强调底色、点缀 */
+  --vp-c-brand-soft: rgba(255, 210, 0, 0.18);
+
+  /* 品牌按钮：影石黄底 + 黑字 */
+  --vp-button-brand-bg: #ffd200;
+  --vp-button-brand-border: #ffd200;
+  --vp-button-brand-text: #1a1a1a;
+  --vp-button-brand-hover-bg: #ffdc33;
+  --vp-button-brand-hover-border: #ffdc33;
+  --vp-button-brand-hover-text: #000000;
+  --vp-button-brand-active-bg: #ebc200;
+  --vp-button-brand-active-border: #ebc200;
+  --vp-button-brand-active-text: #000000;
+
+  /* 排版与布局 */
+  --vp-layout-max-width: 1480px;
+  --vp-sidebar-width: 280px;
+  --vp-font-family-base: 'Inter', -apple-system, 'PingFang SC', 'Microsoft YaHei',
+    'Helvetica Neue', sans-serif;
+
+  /* 首页 Hero：标题用沉稳的深色，黄色作背景光晕点缀 */
+  --vp-home-hero-name-color: var(--vp-c-text-1);
+  --vp-home-hero-image-background-image: linear-gradient(
+    -45deg,
+    rgba(255, 210, 0, 0.55) 35%,
+    rgba(255, 236, 0, 0.25) 65%
+  );
+  --vp-home-hero-image-filter: blur(64px);
+}
+
+/* 深色模式：黑底上直接用亮黄，既醒目又可读 */
+.dark {
+  --vp-c-brand-1: #ffd200;
+  --vp-c-brand-2: #ffdc33;
+  --vp-c-brand-3: #ffd200;
+  --vp-c-brand-soft: rgba(255, 210, 0, 0.22);
+  --vp-home-hero-name-color: #ffffff;
+}
+
+/* 顶部导航：轻微毛玻璃 */
+.VPNav {
+  backdrop-filter: saturate(140%) blur(12px);
+}
+
+/* 导航栏 logo（影石 Insta360 黑字黄底）：略放大并圆角，小尺寸下更清晰 */
+.VPNavBarTitle .logo {
+  height: 30px;
+  border-radius: 5px;
+}
+
+/* 文档主体最大宽度更宽，优化阅读区 */
+.VPDoc.has-aside .content-container {
+  max-width: 920px;
+}
+
+/* 正文链接：黑字 + 影石黄下划线（清晰、可读、品牌感强） */
+.vp-doc :not(pre) > a {
+  color: var(--vp-c-text-1);
+  font-weight: 500;
+  text-decoration-line: underline;
+  text-decoration-color: var(--vp-c-brand-3);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+  transition: text-decoration-color 0.2s, color 0.2s, opacity 0.2s;
+}
+
+.vp-doc :not(pre) > a:hover {
+  color: var(--vp-c-text-1);
+  opacity: 0.85;
+  text-decoration-color: var(--vp-c-brand-3);
+}
+
+/* ===== 首页 ===== */
+
+/* 收紧 Hero 上下留白，让产品区上移、整体更紧凑 */
+.VPHome .VPHero {
+  padding-top: 56px;
+  padding-bottom: 12px;
+}
+
+@media (min-width: 960px) {
+  .VPHome .VPHero {
+    padding-top: 76px;
+    padding-bottom: 20px;
+  }
+}
+
+/* 收紧页面底部留白；产品区紧贴 Hero */
+.VPHome {
+  padding-bottom: 56px;
+}
+
+.VPHome .vp-doc.container {
+  padding-top: 4px;
+}
+
+/* 区块标题（「选择产品系列」）：居中 + 影石黄下划线点缀，与顶部呼应 */
+.VPHome .vp-doc h2 {
+  margin: 8px 0 0;
+  padding-top: 0;
+  border-top: none;
+  text-align: center;
+  font-size: 1.8rem;
+  letter-spacing: 0.5px;
+}
+
+.VPHome .vp-doc h2::after {
+  content: '';
+  display: block;
+  width: 46px;
+  height: 4px;
+  margin: 14px auto 0;
+  border-radius: 2px;
+  background: var(--vp-c-brand-3);
+}
+
+/* 产品系列卡片：5 张排一排（窄屏自动减列） */
+.platform-cards {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 16px;
+  margin: 30px auto 0;
+}
+
+/* 中屏：3 列；窄屏：2 列；手机：1 列 */
+@media (max-width: 960px) {
+  .platform-cards {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+@media (max-width: 640px) {
+  .platform-cards {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (max-width: 420px) {
+  .platform-cards {
+    grid-template-columns: 1fr;
+  }
+}
+
+.platform-card {
+  position: relative;
+  display: block;
+  padding: 22px 18px;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 16px;
+  background: var(--vp-c-bg-soft);
+  overflow: hidden;
+  transition: border-color 0.25s, transform 0.25s, box-shadow 0.25s;
+  text-decoration: none;
+  color: inherit;
+}
+
+/* 悬停时左侧出现影石黄强调条 */
+.platform-card::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: var(--vp-c-brand-3);
+  transform: scaleY(0);
+  transform-origin: top;
+  transition: transform 0.25s ease;
+}
+
+.platform-card:hover {
+  border-color: var(--vp-c-brand-3);
+  transform: translateY(-4px);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.1);
+}
+
+.platform-card:hover::before {
+  transform: scaleY(1);
+}
+
+.platform-card h3 {
+  margin: 0 0 6px;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.platform-card p {
+  margin: 0;
+  font-size: 14px;
+  color: var(--vp-c-text-2);
+  line-height: 1.65;
+}
+
+/* 图标置于影石黄底的圆角方块中，品牌一致 */
+.platform-card .icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  margin-bottom: 14px;
+  font-size: 24px;
+  border-radius: 12px;
+  background: var(--vp-c-brand-soft);
+}
+
+/* ===== 文档内容 ===== */
+
+/* API 参数表格：紧凑可读 */
+.vp-doc table {
+  display: table;
+  width: 100%;
+}
+
+.vp-doc th {
+  background: var(--vp-c-bg-soft);
+  font-weight: 600;
+}
+
+/* 接口签名代码块标题感 */
+.vp-doc h3 > code {
+  font-size: 1em;
+}
