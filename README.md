@@ -1,4 +1,4 @@
-# Insta360 SDK/API 开发者文档（VitePress） - 测试验证阶段
+# Insta360 SDK/API 开发者文档（测试验证阶段）
 
 
 
