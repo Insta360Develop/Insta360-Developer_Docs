@@ -3,7 +3,7 @@ title: Redirecting…
 head:
   - - meta
     - http-equiv: refresh
-      content: '0; url=/ch/'
+      content: '0; url=./ch/'
 aside: false
 ---
 

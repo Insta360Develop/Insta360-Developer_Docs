@@ -1,21 +1,27 @@
-name: Deploy Docs to Public Pages Repo
+name: Deploy VitePress site to GitHub Pages
 
-# 在私有源码仓库的 main 分支有更新时触发；也可手动触发
 on:
+  # main 分支有更新时触发；也可在 Actions 页手动触发
   push:
     branches: [main]
   workflow_dispatch:
 
-# 同一时间只跑一个部署，新提交会取消进行中的旧任务
+# 授予 GITHUB_TOKEN 部署到 Pages 所需权限
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 只保留一个进行中的部署；不取消正在进行的，让其完成
 concurrency:
-  group: pages-deploy
-  cancel-in-progress: true
+  group: pages
+  cancel-in-progress: false
 
 jobs:
-  build-and-deploy:
+  build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout source (private repo)
+      - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0   # VitePress lastUpdated 需要完整 git 历史
@@ -26,18 +32,27 @@ jobs:
           node-version: 20
           cache: npm
 
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
       - name: Install dependencies
         run: npm ci
 
-      - name: Build VitePress site
+      - name: Build with VitePress
         run: npm run build
 
-      # 把构建产物 dist 推送到“公开仓库” sdk-docs 的 gh-pages 分支
-      - name: Deploy to public repo
-        uses: peaceiris/actions-gh-pages@v4
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
         with:
-          deploy_key: ${{ secrets.DEPLOY_KEY }}
-          external_repository: Insta360Develop/sdk-docs
-          publish_branch: gh-pages
-          publish_dir: ./docs/.vitepress/dist
-          force_orphan: true   # 每次只保留最新产物，不堆积历史
+          path: docs/.vitepress/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
