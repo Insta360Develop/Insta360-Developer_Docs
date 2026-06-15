@@ -1,0 +1,43 @@
+name: Deploy Docs to Public Pages Repo
+
+# 在私有源码仓库的 main 分支有更新时触发；也可手动触发
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# 同一时间只跑一个部署，新提交会取消进行中的旧任务
+concurrency:
+  group: pages-deploy
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source (private repo)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # VitePress lastUpdated 需要完整 git 历史
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build VitePress site
+        run: npm run build
+
+      # 把构建产物 dist 推送到“公开仓库” sdk-docs 的 gh-pages 分支
+      - name: Deploy to public repo
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          deploy_key: ${{ secrets.DEPLOY_KEY }}
+          external_repository: Insta360Develop/sdk-docs
+          publish_branch: gh-pages
+          publish_dir: ./docs/.vitepress/dist
+          force_orphan: true   # 每次只保留最新产物，不堆积历史
