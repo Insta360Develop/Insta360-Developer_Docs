@@ -8,30 +8,51 @@ hero:
 
 ## 选择产品系列
 
+<script setup>
+import { withBase } from 'vitepress'
+</script>
+
 <div class="platform-cards">
-  <a class="platform-card" href="/ch/x/">
+  <a class="platform-card" :href="withBase('/ch/x/')">
     <span class="icon">🎥</span>
     <h3>X 系列</h3>
-    <p>Android · iOS · 桌面端 · OSC 协议。覆盖最完整的系列。</p>
+    <div class="tags">
+      <span class="tag">Android</span>
+      <span class="tag">iOS</span>
+      <span class="tag">Windows</span>
+      <span class="tag">Linux</span>
+    </div>
   </a>
-  <a class="platform-card" href="/ch/go/">
+  <a class="platform-card" :href="withBase('/ch/go/')">
     <span class="icon">🎬</span>
     <h3>Go 系列</h3>
-    <p>Android SDK（iOS 计划中）。</p>
+    <div class="tags">
+      <span class="tag">Android</span>
+      <span class="tag is-planned">iOS 计划中</span>
+    </div>
+    <p class="note">SDK 和接口与 X 系列通用</p>
   </a>
-  <a class="platform-card" href="/ch/ace/">
+  <a class="platform-card" :href="withBase('/ch/ace/')">
     <span class="icon">📸</span>
     <h3>ACE 系列</h3>
-    <p>Android SDK（iOS 计划中）。</p>
+    <div class="tags">
+      <span class="tag">Android</span>
+      <span class="tag is-planned">iOS 计划中</span>
+    </div>
+    <p class="note">SDK 和接口与 X 系列通用</p>
   </a>
-  <a class="platform-card" href="/ch/wave/">
+  <a class="platform-card" :href="withBase('/ch/wave/')">
     <span class="icon">🎙️</span>
     <h3>Wave 系列</h3>
-    <p>单一 SDK，不分平台。</p>
+    <div class="tags">
+      <span class="tag is-planned">计划中</span>
+    </div>
   </a>
-  <a class="platform-card" href="/ch/link/">
+  <a class="platform-card" :href="withBase('/ch/link/')">
     <span class="icon">🔗</span>
     <h3>Link 系列</h3>
-    <p>面向接口对接的单一 SDK / 协议。</p>
+    <div class="tags">
+      <span class="tag is-planned">计划中</span>
+    </div>
   </a>
 </div>

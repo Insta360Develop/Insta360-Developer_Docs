@@ -191,13 +191,57 @@
   margin: 0 0 6px;
   font-size: 18px;
   font-weight: 600;
+  /* 仅标题保留影石黄下划线点缀（标签与脚注不带） */
+  text-decoration: underline;
+  text-decoration-color: var(--vp-c-brand-3);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
 }
 
-.platform-card p {
-  margin: 0;
-  font-size: 14px;
+/* 卡片整体不要正文链接的黄色下划线（覆盖 .vp-doc a 规则，需更高优先级） */
+.VPHome .vp-doc .platform-card,
+.VPHome .vp-doc .platform-card:hover {
+  text-decoration: none;
+}
+
+/* 平台标签：直接平铺成胶囊标签，无「支持平台」前缀 */
+.platform-card .tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.platform-card .tag {
+  padding: 3px 11px;
+  font-size: 12.5px;
+  font-weight: 500;
+  line-height: 1.5;
   color: var(--vp-c-text-2);
-  line-height: 1.65;
+  background: var(--vp-c-default-soft);
+  border: 1px solid transparent;
+  border-radius: 999px;
+}
+
+/* 「计划中 / iOS 计划中」用虚线描边、更弱的色，区分已支持平台 */
+.platform-card .tag.is-planned {
+  color: var(--vp-c-text-3);
+  background: transparent;
+  border: 1px dashed var(--vp-c-divider);
+}
+
+/* 备注：不写「备注」二字，用一行低调脚注呈现 */
+.platform-card .note {
+  margin: 12px 0 0;
+  padding-top: 10px;
+  border-top: 1px dashed var(--vp-c-divider);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--vp-c-text-3);
+}
+
+.platform-card .note::before {
+  content: '※ ';
 }
 
 /* 图标置于影石黄底的圆角方块中，品牌一致 */

@@ -8,30 +8,51 @@ hero:
 
 ## Choose a product series
 
+<script setup>
+import { withBase } from 'vitepress'
+</script>
+
 <div class="platform-cards">
-  <a class="platform-card" href="/en/x/">
+  <a class="platform-card" :href="withBase('/en/x/')">
     <span class="icon">🎥</span>
     <h3>X Series</h3>
-    <p>Android · iOS · Desktop · OSC Protocol. The most complete series.</p>
+    <div class="tags">
+      <span class="tag">Android</span>
+      <span class="tag">iOS</span>
+      <span class="tag">Windows</span>
+      <span class="tag">Linux</span>
+    </div>
   </a>
-  <a class="platform-card" href="/en/go/">
+  <a class="platform-card" :href="withBase('/en/go/')">
     <span class="icon">🎬</span>
     <h3>Go Series</h3>
-    <p>Android SDK (iOS planned).</p>
+    <div class="tags">
+      <span class="tag">Android</span>
+      <span class="tag is-planned">iOS planned</span>
+    </div>
+    <p class="note">SDK and API shared with the X series</p>
   </a>
-  <a class="platform-card" href="/en/ace/">
+  <a class="platform-card" :href="withBase('/en/ace/')">
     <span class="icon">📸</span>
     <h3>ACE Series</h3>
-    <p>Android SDK (iOS planned).</p>
+    <div class="tags">
+      <span class="tag">Android</span>
+      <span class="tag is-planned">iOS planned</span>
+    </div>
+    <p class="note">SDK and API shared with the X series</p>
   </a>
-  <a class="platform-card" href="/en/wave/">
+  <a class="platform-card" :href="withBase('/en/wave/')">
     <span class="icon">🎙️</span>
     <h3>Wave Series</h3>
-    <p>Single SDK, no platform split.</p>
+    <div class="tags">
+      <span class="tag is-planned">Coming soon</span>
+    </div>
   </a>
-  <a class="platform-card" href="/en/link/">
+  <a class="platform-card" :href="withBase('/en/link/')">
     <span class="icon">🔗</span>
     <h3>Link Series</h3>
-    <p>A single integration SDK / protocol.</p>
+    <div class="tags">
+      <span class="tag is-planned">Coming soon</span>
+    </div>
   </a>
 </div>
