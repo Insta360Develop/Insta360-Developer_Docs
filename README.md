@@ -1,10 +1,6 @@
 # Insta360 SDK/API 开发者文档（测试验证阶段）
 
 
-
-X / Go / ACE / Wave / Link 五个产品系列 SDK 的统一文档站点。
-
-
 ## 目录结构
 
 ```
