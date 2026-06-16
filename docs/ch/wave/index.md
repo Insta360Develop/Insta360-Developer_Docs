@@ -1,10 +1,9 @@
 # Wave 系列 SDK
 
-Wave 系列产品的开发者文档。Wave 提供单一 SDK，不区分平台。
+::: warning 暂不支持
+Wave 系列的 SDK 文档**正在规划中,暂未开放**,敬请期待。
+:::
 
-## 文档导航
+Wave 系列产品的开发者文档。相关 SDK / 接口尚未对外开放。
 
-- [集成指南](./guide/) —— 快速接入 Wave SDK
-- [接口文档](./api/) —— 完整接口参数说明
-- [版本更新记录](./changelog) —— 各版本变更
-- [重要提示](./notice) —— 权限、兼容性与最佳实践
+如需了解进展或提前接入,请前往 [insta360.com/sdk/apply](https://www.insta360.com/sdk/apply) 申请,或关注本页更新。

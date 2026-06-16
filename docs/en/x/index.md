@@ -1,14 +1,26 @@
 # X Series SDK
 
-Developer docs for X Series products — the most complete series, with Android, iOS and Desktop SDKs plus the standalone **OSC Protocol**.
+The X series is the most complete product line, offering native SDKs for **Android, iOS and Desktop (Camera SDK / Media SDK)**, plus the cross-platform **OSC protocol**. It covers camera connection, parameter control, photo/video capture, live preview, file management, live streaming, firmware upgrade, and panoramic media stitching and export.
 
-## Platform support
+## Doc sets
 
 | Doc set | Status | Entry |
 | --- | --- | --- |
-| Android SDK | ✅ Available | [Guide](./android/guide/) · [API](./android/api/) |
-| iOS SDK | ✅ Available | [Guide](./ios/guide/) · [API](./ios/api/) |
-| Desktop SDK | ✅ Available | [Guide](./desktop/guide/) · [API](./desktop/api/) |
-| OSC Protocol | ✅ Available | [Guide](./osc/guide/) · [API](./osc/api/) |
+| Android SDK | ✅ Available | [Overview](./android/guide/) · [API Reference](./android/api/) |
+| iOS SDK | ✅ Available | [Overview](./ios/guide/) · [API Reference](./ios/api/) |
+| Desktop SDK | ✅ Available | [Overview](./desktop/guide/) · [Camera SDK API](./desktop/camera/) · [Media SDK API](./desktop/media/) |
+| OSC Protocol | ✅ Available | [Overview](./osc/guide/) · [API Reference](./osc/api/) |
 
-Each doc set includes: Integration Guide, API Reference, Changelog and Important Notes.
+::: tip Which one should I use?
+- Native **Android** app → Android SDK
+- Native **iOS** app → iOS SDK
+- **Windows / Linux** desktop app that controls the camera (capture / record / download) → Desktop **Camera SDK**
+- **Windows / Linux** desktop app that **stitches / exports** panoramic media → Desktop **Media SDK**
+- Cross-language / control the camera directly over HTTP → **OSC Protocol**
+
+> The desktop Windows and Linux interfaces are identical — one doc set covers both.
+:::
+
+## Supported cameras
+
+Across the X series the SDKs cover **X5, X4 Air, X4, X3, ONE X2, ONE X, ONE RS, ONE RS 1-Inch** (exact support varies per SDK — see each doc set's Overview / API Reference).

@@ -1,8 +1,9 @@
 # Wave Series SDK
 
-Developer docs for Wave Series products. Wave ships a single SDK (no platform split).
+::: warning Not yet available
+The Wave series SDK docs are **in planning and not yet available** — stay tuned.
+:::
 
-- [Integration Guide](./guide/)
-- [API Reference](./api/)
-- [Changelog](./changelog)
-- [Important Notes](./notice)
+Developer docs for the Wave series. The SDK / API is not yet open to the public.
+
+To follow progress or get early access, apply at [insta360.com/sdk/apply](https://www.insta360.com/sdk/apply) or watch this page.

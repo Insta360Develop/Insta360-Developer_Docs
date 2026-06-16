@@ -21,13 +21,14 @@ import { withBase } from 'vitepress'
       <span class="tag">iOS</span>
       <span class="tag">Windows</span>
       <span class="tag">Linux</span>
+      <span class="tag">OSC</span>
     </div>
   </a>
   <a class="platform-card" :href="withBase('/en/go/')">
     <span class="icon">🎬</span>
     <h3>Go Series</h3>
     <div class="tags">
-      <span class="tag">Android</span>
+      <span class="tag is-planned">Android planned</span>
       <span class="tag is-planned">iOS planned</span>
     </div>
     <p class="note">SDK and API shared with the X series</p>
@@ -36,7 +37,7 @@ import { withBase } from 'vitepress'
     <span class="icon">📸</span>
     <h3>ACE Series</h3>
     <div class="tags">
-      <span class="tag">Android</span>
+      <span class="tag is-planned">Android planned</span>
       <span class="tag is-planned">iOS planned</span>
     </div>
     <p class="note">SDK and API shared with the X series</p>
