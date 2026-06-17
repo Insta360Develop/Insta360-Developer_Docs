@@ -1,3 +1,3 @@
-# Insta360 开发者文档
+# Insta360 SDK/API 开发者文档
 
 
