@@ -1,6 +1,6 @@
 # X Series SDK
 
-The X series is the most complete product line, offering native SDKs for **Android, iOS and Desktop (Camera SDK / Media SDK)**, plus the cross-platform **OSC protocol**. It covers camera connection, parameter control, photo/video capture, live preview, file management, live streaming, firmware upgrade, and panoramic media stitching and export.
+The X series is the most complete product line, offering SDKs for three platforms — **Android, iOS and Desktop (Windows / Linux)** — plus the cross-platform **OSC protocol**. See the corresponding API reference for the exact features supported.
 
 ## Doc sets
 
