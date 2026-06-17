@@ -31,7 +31,6 @@ import { withBase } from 'vitepress'
       <span class="tag is-planned">Android planned</span>
       <span class="tag is-planned">iOS planned</span>
     </div>
-    <p class="note">SDK and API shared with the X series</p>
   </a>
   <a class="platform-card" :href="withBase('/en/ace/')">
     <span class="icon">📸</span>
@@ -40,7 +39,6 @@ import { withBase } from 'vitepress'
       <span class="tag is-planned">Android planned</span>
       <span class="tag is-planned">iOS planned</span>
     </div>
-    <p class="note">SDK and API shared with the X series</p>
   </a>
   <a class="platform-card" :href="withBase('/en/wave/')">
     <span class="icon">🎙️</span>

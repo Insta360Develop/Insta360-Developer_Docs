@@ -31,7 +31,6 @@ import { withBase } from 'vitepress'
       <span class="tag is-planned">Android 计划中</span>
       <span class="tag is-planned">iOS 计划中</span>
     </div>
-    <p class="note">SDK 和接口与 X 系列通用</p>
   </a>
   <a class="platform-card" :href="withBase('/ch/ace/')">
     <span class="icon">📸</span>
@@ -40,7 +39,6 @@ import { withBase } from 'vitepress'
       <span class="tag is-planned">Android 计划中</span>
       <span class="tag is-planned">iOS 计划中</span>
     </div>
-    <p class="note">SDK 和接口与 X 系列通用</p>
   </a>
   <a class="platform-card" :href="withBase('/ch/wave/')">
     <span class="icon">🎙️</span>
