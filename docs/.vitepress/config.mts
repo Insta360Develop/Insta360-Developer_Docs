@@ -4,10 +4,11 @@ import { enConfig } from './configs/en.mts'
 
 // https://vitepress.dev/reference/site-config
 export default defineConfig({
-  // GitHub Pages 子路径部署：公开仓库名为 Insta360-SDK-API
-  // 页面地址 https://insta360develop.github.io/Insta360-SDK-API/
+  // GitHub Pages 子路径部署：公开仓库名为 Insta360-Developer_Docs
+  // 页面地址 https://insta360develop.github.io/Insta360-Developer_Docs/
+  // base 必须与仓库名（Pages 子路径）完全一致，否则 CSS/JS 资源 404、页面无样式
   // 若以后改用自定义域名（如 docs.insta360.com），将 base 改为 '/'
-  base: '/Insta360-SDK-API/',
+  base: '/Insta360-Developer_Docs/',
 
   // 多个 SDK 文档共用此站点，通过顶部「产品」切换系列
   title: 'Insta360 SDK/API Docs',
