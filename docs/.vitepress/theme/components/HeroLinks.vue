@@ -37,13 +37,13 @@ const data = computed(() =>
             icon: '🏢',
             title: 'Insta360 Enterprise',
             desc: 'Enterprise solutions',
-            href: 'https://www.insta360.com/cn/enterprise'
+            href: 'https://www.insta360.com/enterprise'
           },
           {
             icon: '🔑',
             title: 'Apply for the SDK',
             desc: 'Developer home',
-            href: 'https://www.insta360.com/cn/developer/home'
+            href: 'https://www.insta360.com/developer/home'
           },
           {
             icon: '💬',

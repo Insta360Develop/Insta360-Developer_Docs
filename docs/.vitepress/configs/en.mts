@@ -17,8 +17,8 @@ export const enConfig: LocaleSpecificConfig<DefaultTheme.Config> & {
       {
         text: 'Resources',
         items: [
-          { text: 'Insta360 Enterprise', link: 'https://www.insta360.com/cn/enterprise' },
-          { text: 'Apply for the SDK', link: 'https://www.insta360.com/cn/developer/home' },
+          { text: 'Insta360 Enterprise', link: 'https://www.insta360.com/enterprise' },
+          { text: 'Apply for the SDK', link: 'https://www.insta360.com/developer/home' },
           { text: 'Feedback form', link: 'https://insta.jinshuju.com/f/hZ4aMW' }
         ]
       }
