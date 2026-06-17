@@ -83,6 +83,116 @@
 
 /* ===== 首页 ===== */
 
+/* Hero 右侧「开发者资源」卡片组（占用默认 hero 图片位） */
+.VPHero .image-bg {
+  display: none; /* 隐藏默认黄色光晕，让卡片更干净 */
+}
+
+.VPHero .image-container {
+  width: 100%;
+  max-width: 480px;
+  height: auto;
+  margin: 0 auto;
+  padding: 0;
+  transform: none;
+}
+
+@media (min-width: 960px) {
+  .VPHero .image-container {
+    width: 100%;
+    max-width: 480px;
+    height: auto;
+    transform: none;
+  }
+}
+
+.hero-links {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.hero-links-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 2px;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  color: var(--vp-c-text-2);
+}
+
+.hero-links-title::before {
+  content: '';
+  width: 22px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--vp-c-brand-3);
+}
+
+.hero-link {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 18px;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 14px;
+  background: var(--vp-c-bg-soft);
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.25s, transform 0.25s, box-shadow 0.25s;
+}
+
+.hero-link:hover {
+  border-color: var(--vp-c-brand-3);
+  transform: translateY(-3px);
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.1);
+}
+
+.hero-link-icon {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  font-size: 22px;
+  border-radius: 11px;
+  background: var(--vp-c-brand-soft);
+}
+
+.hero-link-text {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.hero-link-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--vp-c-text-1);
+}
+
+.hero-link-desc {
+  margin-top: 2px;
+  font-size: 12.5px;
+  color: var(--vp-c-text-3);
+}
+
+.hero-link-arrow {
+  flex: none;
+  font-size: 16px;
+  color: var(--vp-c-text-3);
+  transition: transform 0.25s, color 0.25s;
+}
+
+.hero-link:hover .hero-link-arrow {
+  color: var(--vp-c-brand-1);
+  transform: translateX(4px);
+}
+
 /* 收紧 Hero 上下留白，让产品区上移、整体更紧凑 */
 .VPHome .VPHero {
   padding-top: 56px;

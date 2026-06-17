@@ -14,7 +14,14 @@ export const zhConfig: LocaleSpecificConfig<DefaultTheme.Config> & {
     nav: [
       { text: '首页', link: '/ch/' },
       { text: '产品', items: productNav('ch') },
-      { text: '下载', link: '/ch/download' }
+      {
+        text: '开发者资源',
+        items: [
+          { text: 'Insta360 Enterprise', link: 'https://www.insta360.com/cn/enterprise' },
+          { text: 'SDK 申请与下载', link: 'https://www.insta360.com/cn/developer/home' },
+          { text: '问题反馈表单', link: 'https://insta.jinshuju.com/f/hZ4aMW' }
+        ]
+      }
     ],
     sidebar: buildSidebar('ch'),
     outline: { level: [2, 3], label: '本页目录' },

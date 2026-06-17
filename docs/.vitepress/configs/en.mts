@@ -14,7 +14,14 @@ export const enConfig: LocaleSpecificConfig<DefaultTheme.Config> & {
     nav: [
       { text: 'Home', link: '/en/' },
       { text: 'Products', items: productNav('en') },
-      { text: 'Downloads', link: '/en/download' }
+      {
+        text: 'Resources',
+        items: [
+          { text: 'Insta360 Enterprise', link: 'https://www.insta360.com/cn/enterprise' },
+          { text: 'Apply for the SDK', link: 'https://www.insta360.com/cn/developer/home' },
+          { text: 'Feedback form', link: 'https://insta.jinshuju.com/f/hZ4aMW' }
+        ]
+      }
     ],
     sidebar: buildSidebar('en'),
     outline: { level: [2, 3], label: 'On this page' },
