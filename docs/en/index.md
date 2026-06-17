@@ -3,7 +3,7 @@ layout: home
 
 hero:
   name: Insta360 SDK/API Developer Docs
-  tagline: X · Go · ACE · Wave · Link — pick your series, get integrated fast, and master every API.
+  tagline: X · GO · ACE · Wave · Link — pick your series, get integrated fast, and master every API.
 ---
 
 ## Choose a product series
@@ -26,7 +26,7 @@ import { withBase } from 'vitepress'
   </a>
   <a class="platform-card" :href="withBase('/en/go/')">
     <span class="icon">🎬</span>
-    <h3>Go Series</h3>
+    <h3>GO Series</h3>
     <div class="tags">
       <span class="tag is-planned">Android planned</span>
       <span class="tag is-planned">iOS planned</span>

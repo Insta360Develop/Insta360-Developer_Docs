@@ -3,7 +3,7 @@ layout: home
 
 hero:
   name: Insta360 SDK/API 开发者文档
-  tagline: X · Go · ACE · Wave · Link —— 选择你的产品系列，快速接入并掌握每一个接口。
+  tagline: X · GO · ACE · Wave · Link —— 选择你的产品系列，快速接入并掌握每一个接口。
 ---
 
 ## 选择产品系列
@@ -26,7 +26,7 @@ import { withBase } from 'vitepress'
   </a>
   <a class="platform-card" :href="withBase('/ch/go/')">
     <span class="icon">🎬</span>
-    <h3>Go 系列</h3>
+    <h3>GO 系列</h3>
     <div class="tags">
       <span class="tag is-planned">Android 计划中</span>
       <span class="tag is-planned">iOS 计划中</span>

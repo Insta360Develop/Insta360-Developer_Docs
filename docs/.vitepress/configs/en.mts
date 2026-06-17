@@ -8,7 +8,7 @@ export const enConfig: LocaleSpecificConfig<DefaultTheme.Config> & {
   label: 'English',
   lang: 'en-US',
   title: 'Insta360 SDK/API Developer Docs',
-  description: 'Integration guides and API references for X / Go / ACE / Wave / Link series SDKs',
+  description: 'Integration guides and API references for X / GO / ACE / Wave / Link series SDKs',
   themeConfig: {
     siteTitle: 'SDK/API Developer Docs',
     nav: [

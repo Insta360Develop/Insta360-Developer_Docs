@@ -34,7 +34,7 @@ interface Series {
 /**
  * 产品矩阵 —— 全站结构的唯一数据源。
  * 新增系列 / 平台 / 协议，只需在此增改，nav 与 sidebar 会自动生成。
- * 注意：当前不展示「计划中尚未支持」的平台（如 Go / ACE 的 iOS）。
+ * 注意：当前不展示「计划中尚未支持」的平台（如 GO / ACE 的 iOS）。
  */
 export const seriesList: Series[] = [
   {
@@ -60,8 +60,8 @@ export const seriesList: Series[] = [
   },
   {
     key: 'go',
-    ch: 'Go 系列',
-    en: 'Go Series',
+    ch: 'GO 系列',
+    en: 'GO Series',
     docSets: [],
     comingSoon: true
   },

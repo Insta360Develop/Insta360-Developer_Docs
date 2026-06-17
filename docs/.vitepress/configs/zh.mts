@@ -8,7 +8,7 @@ export const zhConfig: LocaleSpecificConfig<DefaultTheme.Config> & {
   label: '简体中文',
   lang: 'zh-Hans',
   title: 'Insta360 SDK/API 开发者文档',
-  description: 'X / Go / ACE / Wave / Link 系列 SDK 的集成指南与接口文档',
+  description: 'X / GO / ACE / Wave / Link 系列 SDK 的集成指南与接口文档',
   themeConfig: {
     siteTitle: 'SDK/API 开发者文档',
     nav: [
