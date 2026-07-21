@@ -1,33 +1,18 @@
-# Insta360 SDK/API 开发者文档
+# Insta360 SDK/API Developer Docs
 
-Insta360 X / Go / ACE / Wave / Link 系列的 SDK / API 开发者文档(基于 VitePress 构建,部署于 GitHub Pages)。
+Developer documentation for the Insta360 X / Go / ACE / Wave / Link series SDKs / APIs (built with VitePress, deployed on GitHub Pages).
 
-## 在线文档(推荐)
+## Online docs (recommended)
 
 🌐 **<https://insta360develop.github.io/Insta360-Developer_Docs/>**
 
-> ⚠️ 若上面的 Pages 站点打不开(部分网络对 `github.io` 访问不稳定),可直接浏览下方**仓库内的 Markdown 文档**
+> ⚠️ If the Pages site above is unreachable (some networks have unstable access to `github.io`), you can browse the **in-repo Markdown docs** below as a fallback — readable as long as you can access this repository.
 
 ---
 
-## 📚 文档导航(仓库内 Markdown)
+## 📚 Documentation (in-repo Markdown · fallback)
 
-### 中文文档
-
-**X 系列** —— [系列概述](docs/ch/x/index.md)
-
-| 文档集 | 概述 | 版本记录 | 接口文档 |
-| --- | --- | --- | --- |
-| Android SDK | [概述](docs/ch/x/android/guide/index.md) | [版本记录](docs/ch/x/android/changelog.md) | [接口文档](docs/ch/x/android/api/index.md) |
-| iOS SDK | [概述](docs/ch/x/ios/guide/index.md) | [版本记录](docs/ch/x/ios/changelog.md) | [接口文档](docs/ch/x/ios/api/index.md) |
-| 桌面端 SDK | [概述](docs/ch/x/desktop/guide/index.md) | [版本记录](docs/ch/x/desktop/changelog.md) | [Camera SDK](docs/ch/x/desktop/camera/index.md) · [Media SDK](docs/ch/x/desktop/media/index.md) |
-| OSC 协议 | [概述](docs/ch/x/osc/guide/index.md) | — | [接口文档](docs/ch/x/osc/api/index.md) |
-
-**其他系列(暂不支持)**:[Go 系列](docs/ch/go/index.md) · [ACE 系列](docs/ch/ace/index.md) · [Wave 系列](docs/ch/wave/index.md) · [Link 系列](docs/ch/link/index.md)
-
-### English Docs
-
-**X Series** —— [Overview](docs/en/x/index.md)
+**X Series** — [Overview](docs/en/x/index.md)
 
 | Doc set | Overview | Release Notes | API Reference |
 | --- | --- | --- | --- |
@@ -40,16 +25,16 @@ Insta360 X / Go / ACE / Wave / Link 系列的 SDK / API 开发者文档(基于 V
 
 ---
 
-## 开发者资源
+## Developer resources
 
-- **Insta360 Enterprise**:<https://www.insta360.com/cn/enterprise>
-- **SDK 申请与下载**:<https://www.insta360.com/cn/developer/home>
-- **问题反馈表单**:<https://insta.jinshuju.com/f/hZ4aMW>
+- **Insta360 Enterprise**: <https://www.insta360.com/enterprise>
+- **Apply for the SDK**: <https://www.insta360.com/developer/home>
+- **Feedback form**: <https://insta.jinshuju.com/f/hZ4aMW>
 
-## 本地开发
+## Local development
 
 ```bash
 npm install
-npm run dev     # 本地预览
-npm run build   # 构建静态站点到 docs/.vitepress/dist
+npm run dev     # local preview
+npm run build   # build the static site into docs/.vitepress/dist
 ```
