@@ -58,7 +58,9 @@ sudo ./CameraSDKDemo //for ubuntu
 
 ##### Windows
 
-请确保已安装libusbK驱动程序。你可以直接安装[libusbK](https://sourceforge.net/projects/libusbk/files/libusbK-release/3.0.7.0/)，也可以使用[zadig](https://zadig.akeo.ie/)来协助安装libusbK驱动程序。  
+请确保已安装libusbK驱动程序。你可以直接安装[libusbK](https://sourceforge.net/projects/libusbk/files/libusbK-release/3.0.7.0/)，也可以使用[zadig](https://zadig.akeo.ie/)来协助安装libusbK驱动程序。
+
+使用 zadig 安装 libusbK 驱动程序时需要连接相机，并选择 USB ID 为 **2E1A 0002** 的设备（如果 USB ID 显示不正确，请让相机处于切换安卓模式的进度条中）。
 
 ### 相机发现
 

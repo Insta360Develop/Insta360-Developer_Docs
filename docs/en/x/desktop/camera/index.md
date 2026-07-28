@@ -58,6 +58,8 @@ sudo ./CameraSDKDemo   // for Ubuntu
 
 Please install the [**libusbK**](https://sourceforge.net/projects/libusbk/files/libusbK-release/3.0.7.0/) driver. You can install libusbK directly or use [**Zadig**](https://zadig.akeo.ie/) to install the libusbK driver.
 
+When installing the libusbK driver with Zadig, connect the camera and select the device with USB ID **2E1A 0002** (if the USB ID is shown incorrectly, keep the camera on the progress bar while it is switching to Android mode).
+
 ### Camera Discovery
 
 Camera discovery is primarily achieved through the **ins\_camera::DeviceDiscovery** interface. 
