@@ -1,45 +1,35 @@
 # Android SDK 概述
 
-X 系列 **Android SDK** 用于连接相机、设置与获取相机参数、控制相机拍照和录制、文件下载、固件升级,并支持视频导出与图片导出。SDK 分为 **Camera SDK**(连机控制)与 **Media SDK**(素材拼接 / 导出)两部分。
+**Android SDK** 用于连接相机、设置与获取相机参数、控制相机拍照和录制、文件下载、固件升级,并支持视频导出与图片导出。SDK 分为两个模块,可按需单独引入:
 
-## 支持机型
+| 模块 | 依赖 | 职责 |
+| --- | --- | --- |
+| **Camera SDK** | `com.arashivision.sdk:sdk-camera` | 连机控制:连接、拍摄、参数设置、实时预览、文件管理、固件升级 |
+| **Media SDK** | `com.arashivision.sdk:sdk-media` | 素材处理:全景播放、图像拼接、媒体导出、预览渲染 |
 
-ONE R、ONE RS、ONE RS 1-Inch、ONE X、X2、X3、X4、X4 Air、X5。
+## 版本说明
 
-## 环境准备
+Android SDK 目前有两个大版本,接口不兼容:
 
-Camera SDK 与 Media SDK 共用同一 Maven 仓库,按需引入对应依赖即可。
+| 版本 | 支持系列 | 状态 | 文档 |
+| --- | --- | --- | --- |
+| **V2.x.x**(当前) | X、ACE、GO | ✅ 持续维护 | 见下方「快速上手」 |
+| V1.x.x(旧版) | 仅 X | 🔒 仅维护,不再新增功能 | [接口文档(旧版 1.x.x)](/ch/x/android/legacy-api/) |
 
-1. 将 Maven 地址添加到项目根目录 `build.gradle` 的 `repositories`(地址与凭据见 SDK Demo):
-
-```Groovy
-allprojects {
-    repositories {
-        ...
-        maven {
-            url 'XXXXXX'
-            credentials {
-                username = '***'
-                password = '***'
-            }
-        }
-    }
-}
-```
-
-2. 在模块 `build.gradle` 中按需导入依赖:
-
-```Groovy
-dependencies {
-    implementation 'com.arashivision.sdk:sdkcamera:x.x.x' // Camera SDK
-    implementation 'com.arashivision.sdk:sdkmedia:x.x.x'  // Media SDK
-}
-```
-
-> SDK 初始化方法见 [接口文档 · 初始化](../api/)。
-
-::: warning 注意
-32 位库(`armeabi-v7a`)已不再维护,请使用 64 位库(`arm64-v8a`)进行构建!
+::: tip 新项目请使用 V2.x.x
+V2.x.x 是当前版本,X、ACE、GO 三个系列共用同一套接口,调用方式完全一致。
+V1.x.x 保留供存量项目查阅,只提供接口文档。
 :::
 
-➡️ 全部接口的参数、返回值、示例与错误码见 **[接口文档](../api/)**。
+## 快速上手(V2.x.x)
+
+按顺序阅读即可完成接入:
+
+1. **[推荐开发环境](../environment/)** —— Android Studio / Gradle / SDK 版本要求、Maven 仓库配置、权限声明
+2. **[Camera SDK 集成指南](../camera-integration/)** —— 从初始化到连接相机、拍摄、预览的完整流程
+3. **[Media SDK 集成指南](../media-integration/)** —— 播放、拼接、导出的完整流程
+4. 接口细节查阅 **[Camera SDK 接口文档](../camera-api/)** 与 **[Media SDK 接口文档](../media-api/)**
+
+## 版本记录
+
+各版本的更新内容见 **[版本记录](../changelog)**。

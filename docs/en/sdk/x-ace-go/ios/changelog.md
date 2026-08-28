@@ -1,5 +1,13 @@
 # Release Notes
 
+## V1.10.4
+
+**Released**: 2026-08-28
+
+1. Support X6
+2. Added notification for entering the saving state after a photo is taken (X5 and X6 only)
+3. Improved SDK stability and fixed several known issues
+
 ## V1.9.2
 
 1. Support X4 Air

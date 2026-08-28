@@ -6,9 +6,9 @@ The desktop SDK (C++) targets Windows / Linux desktop apps and includes two part
 
 ## Camera SDK
 
-CameraSDK connects to the camera, gets/sets camera parameters, controls photo and video capture, downloads files, and upgrades firmware. It connects to the camera **over USB only**, and is designed for enterprise users.
+CameraSDK connects to the camera, gets/sets camera parameters, controls photo and video capture, downloads files, and upgrades firmware (X4 and later only). It connects to the camera **over USB only**, and is designed for enterprise users.
 
-**Supported cameras**: ONE R, ONE RS, ONE RS 1-Inch, ONE X, X2, X3, X4, X4 Air, X5.
+**Supported cameras**: X6, X5, X4 Air, X4, X3, X2, ONE X, ONE R, ONE RS, ONE RS 1-Inch.
 
 **Platforms**
 
@@ -28,7 +28,7 @@ The 3.x.x SDK **requires a discrete GPU**; all file paths must be UTF-8 encoded;
 
 MediaSDK stitches panoramic media and supports **video export** and **image export**.
 
-**Supported cameras**: ONE R, ONE RS, ONE RS 1-Inch, ONE X, X2, X3, X4, X4 Air, X5.
+**Supported cameras**: X6, X5, X4 Air, X4, X3, X2, ONE X, ONE R, ONE RS, ONE RS 1-Inch.
 
 **Platforms**
 

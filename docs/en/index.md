@@ -28,7 +28,7 @@ import { withBase } from 'vitepress'
     <span class="icon">🎬</span>
     <h3>GO Series</h3>
     <div class="tags">
-      <span class="tag is-planned">Android planned</span>
+      <span class="tag">Android</span>
       <span class="tag is-planned">iOS planned</span>
     </div>
   </a>
@@ -36,7 +36,7 @@ import { withBase } from 'vitepress'
     <span class="icon">📸</span>
     <h3>ACE Series</h3>
     <div class="tags">
-      <span class="tag is-planned">Android planned</span>
+      <span class="tag">Android</span>
       <span class="tag is-planned">iOS planned</span>
     </div>
   </a>

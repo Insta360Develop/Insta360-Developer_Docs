@@ -6,9 +6,9 @@
 
 ## Camera SDK
 
-CameraSDK 主要用于连接相机、设置与获取相机参数、控制相机拍照和录制、文件下载与固件升级等,且**仅支持通过 USB 连接相机**,面向企业用户。
+CameraSDK 主要用于连接相机、设置与获取相机参数、控制相机拍照和录制、文件下载与固件升级(仅支持 X4 及之后的机型)等,且**仅支持通过 USB 连接相机**,面向企业用户。
 
-**支持机型**:ONE R、ONE RS、ONE RS 1-Inch、ONE X、X2、X3、X4、X4 Air、X5。
+**支持机型**:X6、X5、X4 Air、X4、X3、X2、ONE X、ONE R、ONE RS、ONE RS 一英寸。
 
 **支持平台**
 
@@ -28,7 +28,7 @@ CameraSDK 主要用于连接相机、设置与获取相机参数、控制相机�
 
 MediaSDK 主要用于对全景素材进行**拼接**,支持**视频导出**与**图片导出**。
 
-**支持机型**:ONE R、ONE RS、ONE RS 1-Inch、ONE X、X2、X3、X4、X4 Air、X5。
+**支持机型**:X6、X5、X4 Air、X4、X3、X2、ONE X、ONE R、ONE RS、ONE RS 一英寸。
 
 **支持平台**
 

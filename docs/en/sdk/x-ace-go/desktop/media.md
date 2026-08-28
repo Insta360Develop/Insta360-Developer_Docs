@@ -1,369 +1,372 @@
 # Media SDK API Reference
 
-## Notes
+## Overview
 
-> The SDK requires that all file path strings must be encoded in UTF-8.
->
-> The GPU version of the SDK requires a graphics card.
->
-> Ubuntu system testing for WSL on Windows is not supported.
+InsMediaSDK provides stitching and processing capabilities for Insta360 panoramic camera footage, supporting image stitching, video stitching, and real-time stitching. Currently supported camera models include ONE X, ONE R/RS (standard fisheye and 1-inch fisheye), ONE X2, X3, X4, X4 Air, X5, X6, and other panoramic camera footage, with support for video export and image export. Supported platforms are primarily Windows and Ubuntu 22.04.
 
-## API Description
+The SDK is distributed as a dynamic library (.dll / .so), together with two sample programs:
 
-### *Initialize SDK Environment*
-`void InitEnv()` (GPU Version)
+- **MediaSDKTest** — Offline stitching test (supports video/image/batch)
+- **RealTimeStitcherSDKTest** — Real-time stitching test
 
-This API must be called at the start of the main program to initialize the SDK environment.
+For usage of specific interfaces, refer to `example/main.cc` in the SDK.
 
-### Set the model root directory
+### Notes
 
-`SetModelFileRootDir(const std::string path)`
+> The SDK requires all file path character encoding to be UTF-8.
 
-> Supported from version 3.1.x onwards
+> When using an NVIDIA graphics card, the driver version must be ≥ 470.
 
-This interface primarily sets the root directory for model files, allowing you to use `SDK_DIR/models` as a parameter. Its main purpose is to eliminate the tedious process of setting up different AI models for different cameras when using AI functions.
+> Testing on Ubuntu under WSL on Windows is not supported.
 
-### Input and Output Parameter Settings
+---
 
-#### Input Path
+## Platform Support
 
-` void SetInputPath(std::vector\<std::string>& input_paths)` 
+| Platform | Architecture | Build Tool | Dependencies |
+|------|------|----------|------|
+| Windows 10+ | x64 | Visual Studio 2019 | CUDA 10.2, Conan 2 |
+| Ubuntu 22.04 | x64 | GCC 11+ | CUDA 11.7, Conan 2 |
 
-This API is used to set the input paths of the materials. It is an array and is valid for both videos and photos.
+---
 
-For videos, this array typically contains at most two material files. Materials with a resolution of **5.7K or higher** require two material files as input (except for materials captured with X4 cameras). For **X4 cameras**, dual video track storage is currently used. Regardless of resolution, there is **only one original video file**.
+## Quick Start
 
-**Example Usage**
+### Windows
 
-```c++
-// For dual-track 5.7K materials
-std::string _00_file = "/path/to/VID_XXX_..._00_XXX.insv";
-std::string _10_file = "/path/to/VID_XXX_..._10_XXX.insv"
-std::vector<std::string> input_path = {_00_file,_10_file};
-videoStitcher->SetInputPath(input_path);
-
-// For single-track material files
-std::string insv_file = "/path/to/VID_XXX_..._00_XXX.insv";
-std::vector<std::string> input_path = {insv_file};
-videoStitcher->SetInputPath(input_path);
+```
+SDKRelease/MediaSDK/MediaSDK-<version>-<date>-win64/
+├── bin/
+│   ├── MediaSDK.dll              # SDK dynamic library
+│   ├── MediaSDKTest.exe          # Offline stitching test program
+│   ├── RealTimeStitcherSDKTest.exe
+│   ├── CameraSDK.dll             # Camera connection library (needed for real-time stitching)
+│   ├── models/                   # Algorithm model files (required)
+│   └── *.dll                     # Runtime dependencies (opencv/cuda/VC++ runtime, etc.)
+├── lib/
+│   └── MediaSDK.lib              # Development link library
+├── include/stitcher/
+│   ├── ins_common.h
+│   ├── ins_stitcher.h
+│   └── ins_realtime_stitcher.h
+└── example/
+    ├── main.cc                   # MediaSDKTest source
+    └── realtime_stitcher_demo.cc # RealTimeStitcherSDKTest source
 ```
 
-For **photo files**, this array can accept multiple inputs **(but not exactly 2)**. If **3, 5,  7 or 9 materials** are input, they are assumed to be **HDR photos**, and **HDR fusion** will be applied automatically. For **X4 cameras**, the **default HDR materials** captured by the camera **have already undergone in-camera HDR fusion**. Therefore, only **one material file** is output from the camera.
+### Linux
 
-#### Output Path
-
-`void SetOutputPath(const std::string& output_path)`
-
-This API is used to set the output path. It is valid for both video and photo outputs. The parameter should be a full path.
-
-**Supported Output Formats:**
-
-> For videos, the path should end with .mp4  **Example:**/output/to/path/video.mp4
-
-> For images, the path should end with .jpg  **Example:** /output/to/path/image.jpg
-
-#### Output Resolution
-
-`void SetOutputSize(int width, int height)`
-
-This API is used to set the output resolution. The parameter width:height must have a **2:1 ratio**.
-
-For the **CPU version of the SDK**, if a resolution that is too small is set and **moiré patterns** appear, you can use the `EnableAreaSample`API to **eliminate moiré effects**.
-
-
-
-#### Encoding Format
-
-`void EnableH265Encoder()`
-
-This API is used to set the encoding format to **H.265**. The default encoding format is **H.264**. 
-
-When the output resolution is **greater than 4K**, it is **recommended to use H.265 encoding**, as **H.265 encoding supports hardware acceleration**, which can **speed up the export process**.
-
-#### Output Bitrate
-
-`void SetOutputBitRate(int64\_t bitRate)`
-
-This API is used to set the bitrate for video output. The unit is **bps**.
-
-If not set, the original video bitrate will be used by default.
-
-> **Example:**
->
-> To output at **60 Mbps**, set the value as follows: bitRate = 60 × 1000 × 1000
-
-#### Export Video as Image Sequences
-
-`void SetImageSequenceInfo(const std::string output_dir, IMAGE_TYPE image_type)`
-
-This function allows users to export video frames as an image sequence and configure the output path and image format.
-
-**Parameters**: output\_dirThis parameter specifies the directory-level output path, excluding file information.Before using this function, make sure that the target directory has already been created.
-
-> **Example:**/path/to/image\_save\_dir
-
-The exported image files are named based on the video frame timestamp (ms).
-
-> **Example:** /path/to/image\_save\_dir/100.jpg *(This means the image was saved at the 100 ms video frame timestamp.)*
-
-image\_type specifies the image format to be used. This can be either .png or .jpg.
-
-> **Note:**If you have used SetOutputPath, this does not need to be set again.
-
-
-
-#### Export Selected Frames from Video
-
-`void SetExportFrameSequence(const std::vector <uint64_t>& vec)`
-
-This API is used to export images from specific video frame indices. This function must be used together with `SetImageSequenceInfo`. The output image file names will be based on the video frame index.The video frame index starts from 0.
-
-> **Example:** /path/to/image\_save\_dir/10.jpg (this means the image is saved for video frame index **10**)
-
-**Demo Example:**
-
-```c++
-// This sample code demonstrates extracting frames 0, 10, 20, and 30 from a video file
-std::vector<uint64_t> seq_nos = {0，10，20，30};
-const std::string image_seq_export_dir = /path/to/image_seq_dir;
-const IMAGE_TYPE image_format = IMAGE_TYPE::JPEG;
-...
-videoStitcher->SetExportFrameSequence(seq_nos);
-videoStitcher->SetImageSequenceInfo(image_seq_export_dir,image_format);
-...
-videoStitcher->StartStitch()
+Delivered tarball `MediaSDK-<version>-<date>-linux64.tar.gz`:
+```
+MediaSDK-<version>-<date>-linux64/
+├── MediaSDK-<version>-linux-amd64.deb   # Single self-contained install package
+├── include/
+│   ├── ins_common.h
+│   ├── ins_stitcher.h
+│   └── ins_realtime_stitcher.h
+├── example/
+│   ├── main.cc
+│   └── realtime_stitcher_demo.cc
+└── README.txt
 ```
 
+After `sudo dpkg -i`, everything is installed into a single directory (same structure as the Windows distribution):
+```
+/opt/MediaSDK-<version>-linux/
+├── bin/     MediaSDKTest, RealTimeStitcherSDKTest, models/
+├── lib/     libMediaSDK.so + runtime dependencies (cuda/cudnn/opencv/...)
+├── include/ ins_common.h, ins_stitcher.h, ins_realtime_stitcher.h
+└── example/ main.cc, realtime_stitcher_demo.cc
+```
 
+> The integration documentation (this guide) is now provided online instead of being bundled in the package. Please refer to the latest online version.
 
-### Stabilization Parameter Settings
+---
 
-#### Enable Stabilization
+## API Reference
 
-`void EnableFlowState(bool enable)`
+The SDK provides three public header files, located under `include/` (under `include/stitcher/` in the Windows package):
 
-This API is used to configure the stabilization option, determining whether to enable stabilization.
+### Core API Overview
 
-#### Enable Direction Lock
+| Class / Function | Header | Description |
+|-----------|--------|------|
+| `VideoStitcher` | `ins_stitcher.h` | Offline video stitching (export) |
+| `ImageStitcher` | `ins_stitcher.h` | Offline image stitching (DNG/JPEG/INSP, etc.) |
+| `RealTimeStitcher` | `ins_realtime_stitcher.h` | Real-time stitching (preview/live streaming scenarios) |
+| `ins::InitEnv()` | `ins_common.h` | SDK initialization (must be called before use, regardless of whether CUDA is used) |
+| `GetMediaFileInfo()` | `ins_common.h` | Query source-file properties (resolution/fps/bitrate/duration) before stitching |
+| `GetVersion()` / `GetVersionMajor()` | `ins_common.h` | Query the current SDK version |
 
-`void EnableDirectionLock(bool enable)`
+### Initialization
 
-This API is used to enable direction lock.
+Before using the SDK, you must call `InitEnv()` and then set the model directory:
 
-### Stitching Parameter Settings
+```cpp
+#include <ins_stitcher.h>
 
-#### Stitching Type
+int main() {
+    ins::SetLogLevel(ins::InsLogLevel::ERR);   // Optional: log print level
+    ins::InitEnv();                            // Required: initialize the runtime (GPU context/thread pool, etc.)
+    ins::SetModelFileRootDir("./models/");     // Model directory (must end with a separator); needed for AI stitching/ColorPlus/denoise, etc.
+    // ... create VideoStitcher / ImageStitcher / RealTimeStitcher
+}
+```
 
-`void SetStitchType(STITCH_TYPE type)`
+> `SetModelFileRootDir` has been supported since 3.1.0.0. Simply pass `SDK_DIR/models` as the argument. This resolves the previous cumbersome requirement of separately setting the AI model path for each feature per camera model (each `Enable*` interface has also no longer required a separate model path parameter since 3.1.0.0).
 
-This API is used to set the stitching type. The available stitching types are as follows:
+> Use `std::string ins::GetVersion()` to get the full version string (e.g. `"3.1.4"`), and `int ins::GetVersionMajor()` to get the major version number; both are declared in `ins_common.h`.
 
-```text
+---
+
+## Video Stitching (VideoStitcher) and Image Stitching (ImageStitcher)
+
+`VideoStitcher` (video) and `ImageStitcher` (image) share most parameter-setting interfaces (input/output paths, resolution, stitching type, stabilization, color grading, lens guard, etc. — see "Common Parameters" below). The main difference is the stitching flow itself:
+
+- **Video stitching is asynchronous**: `StartStitch()` returns immediately, and progress/completion/errors are reported via callbacks.
+- **Image stitching is synchronous**: `Stitch()` blocks until completion, with no callbacks and none of the video-only parameters such as bitrate or encoding format.
+
+See `example/main.cc` for a complete runnable example.
+
+```cpp
+#include <ins_stitcher.h>
+#include <mutex>
+#include <condition_variable>
+
+// Video stitching: asynchronous
+auto video_stitcher = std::make_shared<ins::VideoStitcher>();
+video_stitcher->SetInputPath({"/path/to/video.insv"});
+video_stitcher->SetOutputPath("/path/to/output.mp4");
+video_stitcher->SetOutputSize(3840, 1920);               // width:height must be 2:1
+video_stitcher->SetStitchType(ins::STITCH_TYPE::AIFLOW); // Optional: AI stitching
+video_stitcher->EnableFlowState(true);                   // Optional: stabilization
+
+std::mutex m; std::condition_variable cv; bool done = false, err = false;
+video_stitcher->SetStitchProgressCallback([&](int progress, int) {
+    if (progress == 100) { std::lock_guard<std::mutex> lk(m); done = true; cv.notify_one(); }
+});
+video_stitcher->SetStitchStateCallback([&](int code, const char* info) {
+    { std::lock_guard<std::mutex> lk(m); err = true; } cv.notify_one();
+});
+
+video_stitcher->StartStitch();                           // Starts asynchronously and returns immediately; parameters cannot be changed after this (changes have no effect)
+
+std::unique_lock<std::mutex> lk(m);
+cv.wait(lk, [&]{ return done || err; });                 // Wait for completion or error
+
+// Image stitching: synchronous
+auto image_stitcher = std::make_shared<ins::ImageStitcher>();
+image_stitcher->SetInputPath({"/path/to/input.insp"});
+image_stitcher->SetOutputPath("/path/to/output.jpg");
+image_stitcher->SetOutputSize(3840, 1920);
+image_stitcher->Stitch();                                // Synchronous; completes when it returns
+```
+
+### Common Parameters (apply to both VideoStitcher and ImageStitcher)
+
+#### `void SetInputPath(const std::vector<std::string>& input_paths)`
+
+Sets the input paths for source material (as an array); applies to both video and photos.
+
+- **Video**: The array holds at most two source files. **Footage at ≥5.7K resolution requires two source files as input** (except for the X4 / X5 / X4 Air / X6 cameras — these models save both lenses' streams as two video tracks in a single file, so there is only ever one source file regardless of resolution).
+
+  ```cpp
+  // Dual-file 5.7K footage
+  std::vector<std::string> input_path = {"/path/VID_XXX_..._00_XXX.insv",
+                                          "/path/VID_XXX_..._10_XXX.insv"};
+  // Single-file footage (including X4/X5/X4 Air/X6)
+  std::vector<std::string> input_path = {"/path/VID_XXX_..._00_XXX.insv"};
+  ```
+
+- **Photos**: The array can take multiple entries (**but not exactly 2**). Providing 3 or more source files is treated as HDR photos by default and HDR-fused (no odd-count requirement, no upper limit). HDR footage captured by default on the X4 camera is already fused in-camera into a single file, so this rule does not apply to it.
+
+> Tip: before setting the input path, you can query source-file properties (`media_type`, `width`, `height`, `fps`, `bitrate`, `duration_ms`) with `bool GetMediaFileInfo(const std::vector<std::string>& file_paths, MediaFileInfo& info)` (`ins_common.h`) — useful for validating footage or showing info to the user, without constructing a Stitcher object first. Returns `false` if parsing fails.
+
+#### `void SetOutputPath(const std::string& output_path)`
+
+Sets the export path (full path). Video paths end in `.mp4`, image paths end in `.jpg`. For video, this interface has no effect when `SetImageSequenceInfo` has been set (see "Video-Only Parameters" below).
+
+#### `void SetOutputSize(int width, int height)`
+
+Sets the export resolution. **width:height must be 2:1**. The SDK does not validate this ratio — passing a non-2:1 resolution will not raise an error, but will distort the output image; ensuring the correct ratio is the caller's responsibility.
+
+#### Enable stabilization: `void EnableFlowState(bool enable)`
+
+Sets whether standard stabilization (FlowState) is enabled.
+
+#### Stitching type: `void SetStitchType(STITCH_TYPE type)`
+
+```cpp
 enum class STITCH_TYPE {
     TEMPLATE,       // Template stitching
     OPTFLOW,        // Optical flow stitching
-    DYNAMICSTITCH,  // Dynamic stitching
+    DYNAMICSTITCH,  // Dynamic optical flow stitching
     AIFLOW          // AI stitching
 };
 ```
 
-**Usage Scenarios**
+Use cases:
 
-* **Template Stitching**: An older stitching algorithm that provides poor stitching results for near-field scenes, but is fast and has low computational cost.
+- **Template stitching**: An older stitching algorithm; poor results for close-range scenes, but fast and low in resource usage.
+- **Dynamic stitching**: Suitable for scenes with close-range subjects, motion, and rapid changes.
+- **Optical flow stitching**: Same use cases as dynamic stitching.
+- **AI stitching**: An optimized algorithm built on Insta360's existing optical flow stitching technology, providing better stitching quality.
 
-* **Dynamic Stitching**: Suitable for scenes containing motion or situations with rapid changes in movement.
-
-* **Optical Flow Stitching**: Similar in function to dynamic stitching but optimized for higher accuracy.
-
-* **AI Stitching**: Based on Insta360’s optimized optical flow stitching technology, offering superior stitching results.
-
-> **Performance consumption and cutting effect**：
+> Resource usage and stitching quality: AI stitching > Optical flow stitching > Dynamic stitching > Template stitching
 >
-> **AI Stitching > Optical Flow Stitching > Dynamic Stitching > Template Stitching**
+> Stitching speed: Template stitching > Dynamic stitching > Optical flow stitching > AI stitching
 
-> **Stitching Speed**:
->
-> **Template Stitching > Dynamic Stitching > Optical Flow Stitching > AI Stitching**
+> Note: When using AI stitching, you must point `SetModelFileRootDir` to the root directory containing the models; otherwise, the stitching effect will not take effect.
 
-> **Note: **When using **AI Stitching**, you must call the **SetAiStitchModelFile** API to specify the model file. If this step is skipped, the stitching settings will be **invalid**.
+> Model file: `<model_root_dir>/ai_stitcher.ins` (under the directory set via `SetModelFileRootDir`; fixed filename, not camera-model-specific).
 
+#### Chromatic fusion (cross-lens brightness matching): `void EnableStitchFusion(bool enable)`
 
+Enables chromatic/brightness fusion across lenses. Cause of the artifact: the two lenses expose separately, and a noticeable brightness difference can appear at the stitch seam; inconsistent lighting on the two sides of the lenses or differing exposure between the front and rear lenses can also cause a brightness difference between them, which is especially noticeable in scenes with a large lighting ratio. This feature is used to resolve that issue. (Note: this is unrelated to purple-fringing removal — see `EnableDefringe` below.)
 
-#### AI Stitching Model
+#### Color enhancement: `void EnableColorPlus(bool enable, float strength = 1.0f)`
 
-> Note: Deprecated after version 3.1.x
+Enables color enhancement (an AI feature, depends on the model root directory; no separate model path needed since 3.1.0.0). `strength` is the enhancement intensity (0–1); the default is `1.0f` on VideoStitcher and `0.3f` on ImageStitcher.
 
-`void SetAiStitchModelFile(const std::string& model_file)`
+#### Denoise: `void EnableDenoise(bool enable)`
 
-This API is used to set the AI stitching model, which is required for AI stitching.
+Whether to enable denoising. Video denoising is multi-frame denoising, which removes video noise using redundant information from surrounding frames; it produces better results than single-frame denoising but is more resource-intensive and slows down export. Denoising for photo footage likewise depends on the model root directory.
 
-> Model file v1: SDK_ROOT_DIR/data/ai_stitch_model_v1.ins
-> 
-> Model file v2: SDK_ROOT_DIR/data/ai_stitch_model_v2.ins
+#### Color Grading Features
 
-For materials before X4 camera, use the v1 version of the model file. For materials of X5 camera, use the v2 version of the model file
+| Interface | Range |
+|------|------|
+| `SetExposure` (Exposure) | [-100, 100] |
+| `SetHighlights` (Highlights) | [-100, 100] |
+| `SetShadows` (Shadows) | [-100, 100] |
+| `SetContrast` (Contrast) | [-100, 100] |
+| `SetBrightness` (Brightness) | [-100, 100] |
+| `SetBlackpoint` (Black point) | [-100, 100] |
+| `SetSaturation` (Saturation) | [-100, 100] |
+| `SetVibrance` (Vibrance) | [-100, 100] |
+| `SetWarmth` (Warmth/color temperature) | [-100, 100] |
+| `SetTint` (Tint) | [-100, 100] |
+| `SetDefinition` (Definition/clarity) | [0, 100] |
 
+#### Lens guard: `void SetCameraAccessoryType(CameraAccessoryType type)`
 
+If a lens guard was attached to the camera during capture, the corresponding type must be set for stitching as well; otherwise, the stitching result may be incorrect.
 
-#### Chromatic Calibration
-
-`void EnableStitchFusion(bool enable)`
-
-This API is used to enable Chromatic Calibration.
-
-Causes of chromatic aberration: The two lenses are separate, and the resulting video exposure may not be consistent. When they are stitched together, there will be a more obvious brightness difference. In addition, because the lighting on both sides of the lens is different, the camera exposure is different, and sometimes the pictures taken by the front and back lenses will also have a significant brightness difference. This phenomenon is particularly obvious in places with large light difference ratios. Achromatic aberration is developed to solve this problem.
-
-#### Lens Guard
-
-`void SetCameraAccessoryType(CameraAccessoryType type)`
-
-This API is used to **set the lens guard type**. If a lens guard is used during shooting, it must also be specified when stitching. Otherwise, the stabilization effect may be incorrect.
-
-The following are the available **lens guard types**:
-
-```c++
+```cpp
 enum class CameraAccessoryType {
-    kNormal = 0,            
-    kWaterproof,            // Waterproof case (one/onex/onex2/oner/oners/onex3)
-    kOnerLensGuard,         // Adhesive lens guard (oner/oners)
-    kOnerLensGuardPro,      // Clip-on lens guard (oner/oners)
-    kOnex2LensGuard,        // Adhesive lens guard (oner/oners/onex2/onex3)
-    kOnex2LensGuardPro,     // Clip-on lens guard (onex2)
-    k283PanoLensGuardPro,   // Clip-on lens guard for 283 panoramic lens (oner/oners)
-    kDiveCaseAir,           // Dive case (above water) (onex/onex2/oner/oners/onex3)
-    kDiveCaseWater,         // Dive case (underwater) (onex/onex2/oner/oners/onex3)
-    kInvisibleDiveCaseAir,  // Invisible Dive Case  (Above water) (X3/X4)
-    kInvisibleDiveCaseWater,// Invisible Dive Case  (underwater) (X3/X4)
-    kOnex4LensGuardA,       // X4 A-grade plastic lens guard
-    kOnex4LensGuardS,       // X4 S-grade glass lens guard
-    kOnex3LensGuardA,       // X3 A-grade plastic lens guard
-    kOnex3LensGuardS        // X3 S-grade glass lens guard
+    kAutoDetect = -1,         // Auto-detect the accessory from file metadata
+    kNormal = 0,
+    kWaterproof,              // (one/onex/onex2/oner/oners/onex3) dive case
+    kOnerLensGuard,           // (oner/oners) adhesive lens guard
+    kOnerLensGuardPro,        // (oner/oners) snap-on lens guard
+    kOnex2LensGuard,          // (oner/oners/onex2/onex3) adhesive lens guard
+    kOnex2LensGuardPro,       // (onex2) snap-on lens guard
+    k283PanoLensGuardPro,     // (oner/oners) snap-on lens guard for the 283 panoramic lens
+    kDiveCaseAir,             // (onex/onex2/oner/oners/onex3) dive case (above water)
+    kDiveCaseWater,           // (onex/onex2/oner/oners/onex3) dive case (underwater)
+    kInvisibleDiveCaseAir,    // X3/X4/X5 fully invisible dive case (above water)
+    kInvisibleDiveCaseWater,  // X3/X4/X5 fully invisible dive case (underwater)
+    kLensGuardA,              // X3/X4/X5 Grade-A plastic lens guard
+    kLensGuardS,              // X3/X4/X5 Grade-S glass lens guard
+    kLensGuardAS,             // X3/X4 auto-detect between grade A and S
+    kOnex5ND16,               // X5 ND16 filter
+    kOnex5ND32,               // X5 ND32 filter
+    kOnex5ND64,               // X5 ND64 filter
+    kOner283LensGuardPro,     // (oner/oners) lens guard pro for the 283 lens
+    kOnerLensGuardFpv,        // (oner/oners) adhesive lens guard for the FPV (non-283) lens
+    kOnex4AirDiveCaseAir,     // X4 Air dive case (above water)
+    kOnex4AirDiveCaseWater,   // X4 Air dive case (underwater)
+    kUndetermined = 100,      // Could not be determined
 };
 ```
 
-> Standard lens guards in the store are classified as A-grade, while  Premium guards are classified as S-grade.
+> In the store, the standard lens guard is Grade A, and the premium lens guard is Grade S.
 
-#### Heat sink inspection
+#### Cooling shell detection: `void EnableCoolingShellDetection(bool enable)`
 
-`void EnableCoolingShellDetection(bool enable, const std::string& model_dir)`
+Used to detect whether a cooling shell accessory is being used — if a cooling shell is actually in use but was not selected on the camera's UI, enabling this detection can prevent it from affecting the stitching result. This is an AI feature that depends on the model root directory set via `SetModelFileRootDir` (no longer requires a separately passed model path since 3.1.0.0).
 
-This interface is used to detect the heat sink case. If you use a heat sink case but have not selected whether to use a heat sink case in the camera interface, you need to turn on this function for detection. Otherwise, it will affect the stitching effect of the picture.
+> ⚠️ Cooling shell detection is only supported on X4 Air / X5 / X6 camera models; on other models the SDK automatically skips this feature (query the actual status via `GetFeatureStatusMap()`, key `"cooling_shell"`).
 
-This is an AI function that requires the model file path to be passed in.
+---
 
-> Model file v1: SDK_ROOT_DIR/modelfile/coolingshell/
+## Video-Only Parameters (VideoStitcher only)
 
-### Image Setting Parameters
+The following interfaces are provided only by `VideoStitcher`; they do not apply to `ImageStitcher`.
 
-#### Color Plus
+#### `void SetOutputBitRate(int64_t bitRate)`
 
-`void EnableColorPlus(bool enable, const std::string& model_path)`
+Sets the export bitrate, in bps. If not set, the source video's bitrate is used for export.
 
-> Note: Model path settings have been removed in version 3.1.x and later.
+> For example, to output at 60 Mbps: `bitRate = 60 * 1000 * 1000` (i.e., `60000000`).
 
-This API is used to enable or disable the Color Plus function. This is an AI-based feature, requiring the path to an AI model to be set.
+#### Encoding format: `void EnableH265Encoder(bool enable)`
 
-> **Model file:** SDK_ROOT_DIR/data/colorplus_model.ins
+Sets the encoding format to H.265 (`enable = true`) or H.264 (`enable = false`, default). **When the output resolution exceeds 4K (width or height > 4096), the H.264 encoder cannot use hardware encoding (NVENC's hardware encoding cap is 4096), and the SDK will automatically force a downgrade to software encoding**; in this case, switching to H.265 allows hardware encoding to continue, significantly speeding up export. See the "Software/Hardware Encode/Decode" section below for details.
 
-#### Denoise
+#### 10-bit export: `void Enable10BitExport(bool enable)`
 
-`void EnableDenoise(bool enable, const std::string& model_path)`
+Sets whether to export 10-bit video; default is `false` (8-bit). The actual output bit depth depends on the source material: 10-bit output is only produced when the source itself is 10-bit (e.g. X6 10-bit footage); if the source is 8-bit, a 10-bit export request is silently downgraded to 8-bit (with a WARNING log). 10-bit export is recommended together with `EnableH265Encoder(true)`, since H.264 does not support 10-bit — if the source is 10-bit and the encoding format is still H.264, the SDK will automatically switch the encoding format to H.265.
 
-> Note: Model path settings have been removed in version 3.1.x and later.
+#### Stabilization data export: `void SetStabDataOutputPath(const std::string& file_path)`
 
-This API is used to enable or disable the denoising feature.
+Sets the output file path for exported stabilization (Stab) data.
 
-Multi-frame denoising is used in the video. It is a process of reducing or removing noise in the video through image processing technology. Compared with single-frame denoising, video denoising often uses redundant information of multiple frames before and after. It also consumes performance and slows down the export speed.
+#### Direction lock: `void EnableDirectionLock(bool enable)`
 
-For image materials, the model file path should be specified.
+Enables direction lock. Depends on `EnableFlowState(true)`: FlowState (stabilization) must be enabled first for this feature to take effect; if stabilization is not enabled or the source has no gyro data, this feature is automatically skipped.
 
-> **Model file:** SDK_ROOT_DIR/data/jpg_denoise_9d006262.ins
+#### Defringe (purple fringing removal): `void EnableDefringe(bool enable)`
 
-#### Remove purple edge
+Removes purple fringing artifacts caused during recording by strong lighting (outdoor strong light, indoor lighting scenarios, etc.).
 
-`void EnableDefringe(bool enable, const std::string& defringe_model_path)`
+> ⚠️ Purple fringing removal is only supported on X4 Air / X5 / X6 camera models (X5 and X6 share the same model file; X4 Air uses a dedicated model). On other camera models, the SDK will automatically skip this feature.
 
-> Note: Model path settings have been removed in version 3.1.x and later.
+#### Deflicker: `void EnableDeflicker(bool enable)`
 
-This interface is used to eliminate the purple edge phenomenon caused by lighting during recording, such as outdoor strong light and indoor lighting scenes.
+Removes screen flicker (strobing) issues caused by lighting during recording.
 
-> **Model file:** SDK_ROOT/modelfile/defringe_hr_dynamic_7b56e80f.ins
+#### Image sequence export: `void SetImageSequenceInfo(const std::string& output_dir, IMAGE_TYPE image_type)`
 
-#### Remove strobe
+Exports the source video as an image sequence, setting the export path and image format.
 
-`void EnableDeflicker(bool enable, const std::string& deflicker_model_path)`
+- `output_dir`: A directory-level path (no filename). **Make sure the target directory already exists before use.**
+- `image_type`: Currently supports `png` and `jpg`.
+- Output files are named by video frame timestamp (ms), e.g., `/path/to/dir/100.jpg` represents the frame at 100ms.
+- Once this interface is set, the `SetOutputPath` setting has no effect.
 
-> Note: Model path settings have been removed in version 3.1.x and later.
+#### Exporting specific frames: `void SetExportFrameSequence(const std::vector<uint64_t>& vec)`
 
-This interface is used to eliminate screen flickering problems caused by lighting during recording.
+Used together with `SetImageSequenceInfo` to export only the specified video frame indices (starting from 0) as images. The filename is the frame index, e.g., `/path/to/dir/10.jpg` represents frame index 10.
 
-> **Model file:** SDK_ROOT/modelfile/deflicker_86ccba0d.ins
+```cpp
+// Extract frames 0/10/20/30 from the video, stitch, and export as images
+std::vector<uint64_t> seq_nos = {0, 10, 20, 30};
+videoStitcher->SetExportFrameSequence(seq_nos);
+videoStitcher->SetImageSequenceInfo("/path/to/image_seq_dir", IMAGE_TYPE::JPEG);
+videoStitcher->StartStitch();
+```
 
-#### Color adjust
+#### Stitch progress callback: `void SetStitchProgressCallback(stitch_process_callback callback)`
 
-- Exposure： **SetExposure** Range [-100,100]
-
-- Highlights： **SetHighlights** Range [-100,100]
-
-- Shadows： **SetShadows** Range [-100,100]
-
-- Contrast： **SetContrast** Range [-100,100]
-
-- Brightness： **SetBrightness** Range [-100,100]
-
-- Blackpoint： **SetBlackpoint** Range [-100,100]
-
-- Saturation： **SetSaturation** Range [-100,100]
-
-- Vibrance： **SetVibrance** Range [-100,100]
-
-- Warmth： **SetWarmth** Range [-100,100]
-
-- Tint： **SetTint** Range [-100,100]
-
-- Sharpness： **SetDefinition** Range [0,100]
-
-### Stitching Process
-
-#### Stitching Progress Callback
-
-`void SetStitchStateCallback(stitch_error_callback callback)`
-
-This API is primarily used for stitching status and progress notifications.
-
-It is recommended not to perform time-consuming operations within this callback, as this may affect stitching speed.
-
-**Example Code:**
-
-```c++
+```cpp
 video_stitcher->SetStitchProgressCallback([&](int process, int error) {
     if (stitch_progress != process) {
-        std::cout << "\r";
-        std::cout << "process = " << process << "%";
-        std::cout << std::flush;
+        std::cout << "\r" << "process = " << process << "%" << std::flush;
         stitch_progress = process;
     }
-
     if (stitch_progress == 100) {
         std::cout << std::endl;
         std::unique_lock<std::mutex> lck(mutex_);
         cond_.notify_one();
-        is_finisned = true;
+        is_finished = true;
     }
- });
+});
 ```
 
+#### Stitch error callback: `void SetStitchStateCallback(stitch_error_callback callback)`
 
-
-#### Stitching Error Callback
-
-`void SetStitchProgressCallback(stitch_process_callback callback)`
-
-This API is used to receive error messages during the stitching process.
-
-**Example Code:**
-
-```c++
+```cpp
 video_stitcher->SetStitchStateCallback([&](int error, const char* errinfo) {
     std::cout << "error: " << errinfo << std::endl;
     has_error = true;
@@ -371,118 +374,148 @@ video_stitcher->SetStitchStateCallback([&](int error, const char* errinfo) {
 });
 ```
 
+Used to receive status/error information during the stitching process. It's also recommended not to perform time-consuming operations inside either callback, as this will impact stitching speed. Image sequence export (`SetImageSequenceInfo`) also goes through `VideoStitcher::StartStitch()` and uses these same two callbacks.
 
+#### Start stitching: `void StartStitch()`
 
-#### Start Stitching
+Starts the stitching process. **Note: all parameters must be set before calling this interface; any parameters set after calling it will have no effect.**
 
-`void StartStitch()`
+#### Cancel stitching: `bool CancelStitch()`
 
-This API is used to start the stitching process.
+Interrupts the stitching process.
 
-**Note:**Ensure that all parameter settings are completed before calling this API.If this API is executed before setting the necessary parameters, the parameters will not take effect.
+#### Get stitching progress: `int GetStitchProgress() const`
 
-#### Cancel Stitching
+Gets the current stitching progress.
 
-`bool CancelStitch()`
+#### Get feature runtime status: `std::map<std::string, int> GetFeatureStatusMap() const`
 
-This API is used to **interrupt the stitching process**.
+Call after stitching completes to get the actual runtime status of each feature in this run (keys are feature names such as `"defringe"`, `"cooling_shell"`, `"direction_lock"`, etc.; value meaning: `-1`=unknown, `0`=off, `1`=on, `2`=auto-skipped, `3`=failed). Use this to confirm whether a feature that's only supported on specific camera models/conditions (e.g. defringe, cooling shell detection, direction lock) was automatically skipped by the SDK in this run.
 
-#### Get Stitching Progress
+---
 
-`int GetStitchProgress() const`
+## Image-Only Interface (ImageStitcher only)
 
-This API is used to **retrieve the stitching progress**.
+#### Start stitching: `bool Stitch()`
 
+Synchronously performs image stitching, blocking until completion. The return value (`true`/`false`) genuinely reflects whether this stitch succeeded (internally it parses the source material, validates parameters, and performs the stitch; any failed step results in `false`), so you can rely on it directly.
 
+Differences from video stitching:
 
-### Logging Functionality
+- **No callbacks**: Image stitching does not provide, and does not require registering, `SetStitchProgressCallback` / `SetStitchStateCallback` — those two callback interfaces are provided only by `VideoStitcher` (see "Video-Only Parameters" above). `ImageStitcher` has no progress-reporting mechanism and no separate error callback; simply check the return value of `Stitch()` to know whether it succeeded.
+- **No asynchronous wait**: `Stitch()` returning means processing has already completed — there's no need to wait on a condition variable for a callback as with video stitching.
 
-#### Set Log Path
+---
 
-`void SetLogPath(const std::string log_path)`
+## Logging
 
-This API is primarily used to set the **log file path** in the SDK, allowing SDK log information to be saved.
+### C++ API
 
-#### Set Log Print Level
+| Interface | Description |
+|------|------|
+| `ins::SetLogLevel(InsLogLevel level)` | Sets the SDK's log print level |
 
-`void SetLogLevel(InsLogLevel level)`
+> `SetLogPath` is still available for setting the log output-to-disk path. The command-line demo (`MediaSDKTest`) instead uses the `--log_file` parameter to control log output-to-disk (see below), with more complete behavior (auto-creates directories, path encoding compatible with Chinese characters, etc.). Integrators can call `SetLogPath` directly, or implement equivalent logic by referring to the usage in `example/main.cc`.
 
-This API is used to **set the logging level** within the SDK.
+### Command Line (`--debug` / `--log_level` / `--log_file`)
 
-### Hardware Codec Acceleration
+| Parameter | Description |
+|------|------|
+| `--debug` | Turns on verbose logging (equivalent to `--log_level verbose`; if not specified, only the ERROR level is printed by default, i.e., `InsLogLevel::ERR`) |
+| `--log_level <level>` | Precisely selects the log level: `verbose` / `info` / `warning` / `error` / `fatal` (case-insensitive). If it appears after `--debug` on the command line, it overrides the setting from `--debug` |
+| `--log_file [path]` | Additionally writes SDK logs to a file (the value is optional; see below) |
 
-#### Set whether to enable software encoding and decoding
+**`--log_file` value-resolution rules** (the value is optional, and directory/file paths are handled adaptively):
 
-`SetSoftwareCodecUsage`
+1. If the parameter is not specified → logs are not written to disk (they are still printed to the console).
+2. If `--log_file` is specified with no following value → logs are written under `<directory containing the exe>/logs/`, with a timestamped filename.
+3. If followed by a directory path → a timestamped log file is generated in that directory.
+4. If followed by a file path → logs are written directly to that file.
 
-This interface is mainly used by users to set whether to force the use of software codec. In an environment with only CPU, if an error occurs, it can be set to software codec.
+If the directory does not exist, it is created automatically. **To see verbose information in the log file, `--debug` or `--log_level verbose/info` must also be added** (otherwise the file will also contain only the ERROR level).
 
-#### Disablecuda
+> Path encoding: log paths are handled as UTF-8 and support Chinese-character paths (on Windows, an encoding mismatch between GBK and UTF-8 in `GetModuleFileNameA` under Chinese-locale system paths has been fixed, avoiding the silent crashes or garbled log directory names seen in earlier versions with Chinese-character paths).
 
-`EnableCuda`
+---
 
-This interface mainly detects whether cuda acceleration is enabled. If cuda acceleration is not enabled, it is recommended to set it to false.
+## Software/Hardware Encode/Decode
 
-#### Set rendering acceleration type
+| Parameter | Description |
+|------|------|
+| `-enable_soft_encode` / `-enable_soft_decode` | Maps to `SetSoftwareCodecUsage(enable_encoder, enable_decoder)`, forcing software encoding / software decoding respectively |
+| (not set) | Hardware encode/decode (NVENC/NVDEC) by default |
 
-`SetImageProcessingAccelType`
+At the start of export, a line is printed:
+```
+[Codec] encode=<software|hardware>, decode=<software|hardware>, format=<H264|H265> [(requested by user) | (forced by SDK: ...)]
+```
+This can be used to confirm which path — software or hardware — is actually in effect, and whether it was explicitly requested by the user or automatically forced by the SDK.
 
-This interface is mainly used to set the rendering acceleration: Auto is used for automatic detection. If you encounter Vulkan errors, it is recommended to set it to CPU.
+### Automatic Downgrade / Automatic Switching Rules
 
-### Live stream preview stitching
+In the following situations, the SDK will automatically switch encode/decode modes **without the user specifying any software/hardware encode/decode parameters**, and will annotate the `[Codec]` line with `(forced by SDK: ...)`:
 
-#### Environmental preparation
+1. **Resolution > 4096 (width or height) combined with H.264 encoding format → forced switch to software encoding.**
+   NVENC's hardware encoding resolution cap for H.264 is 4096. **H.265 (HEVC) hardware encoding is not subject to this limit** — to keep hardware encoding at ultra-high resolutions such as 8K (7680×3840), you need to explicitly add `-enable_h265_encoder` / `EnableH265Encoder(true)`.
+2. **On Windows: resolution ≤ 360 (width or height) → forced switch to software encoding.**
+3. **10-bit export + source footage bit depth ≥ 10-bit + H.264 encoding format → the encoding format is automatically switched to H.265.**
+4. Denoise / Defringe (purple fringing removal) / Deflicker + 10-bit source footage → 10-bit export is automatically enabled even without explicitly adding `-enable_10bit`.
 
- Camera stitch preview is based on CameraSDK and MediaSDK together. Header File is located in `MediaSDK_ROOT/include/ins_realtime_stitcher.`
+---
 
- The main function of CameraSDK is to provide stitching parameters, video data, anti-shake data, and exposure data.
+## Hardware Acceleration Interfaces
 
- The main function of MediaSDK is to use the parameters and data provided by cameraSDK to stitch together images and generate a 2:1 panoramic image.
+#### Force software encode/decode: `SetSoftwareCodecUsage`
 
- Please refer to `MediaSDK_ROOT/example/realtime_stitcher_demo.cc`
+Sets whether to force the use of software encoding/decoding.
 
-#### Preview parameter acquisition and setting
+#### Disable CUDA: `EnableCuda(bool enable)`
 
-```c++
+Sets whether to enable CUDA acceleration detection.
+
+#### Rendering acceleration type: `SetImageProcessingAccelType`
+
+Sets the acceleration method for image processing rendering: `Auto` automatically detects (default) / `CPU`.
+
+---
+
+## Real-Time Stitching (RealTimeStitcher)
+
+Real-time stitching is implemented jointly by CameraSDK and MediaSDK: CameraSDK provides stitching parameters, video data, stabilization data, and exposure data; MediaSDK uses this data to perform stitching, producing a 2:1 panoramic frame. The header file is located at `include/ins_realtime_stitcher.h`; see `example/realtime_stitcher_demo.cc` for a complete example.
+
+### Getting and Setting Preview Parameters
+
+```cpp
 #include <ins_realtime_stitcher.h>
-// This interface mainly obtains the parameters required by mediaSDK
-//...
-// Cam is the current camera instance object
+
+// cam is the current camera instance object
 auto preview_param = cam->GetPreviewParam();
 
-// Create a stitching instance object
 auto stitcher = std::make_shared<ins::RealTimeStitcher>();
 
-// Set preview parameters for stitching instance objects
 ins::CameraInfo camera_info;
 camera_info.cameraName = preview_param.camera_name;
 camera_info.decode_type = static_cast<ins::VideoDecodeType>(preview_param.encode_type);
-camera_info.offset = preview_param.offset;
-auto window_crop_info = preview_param.crop_info;
-camera_info.window_crop_info_.crop_offset_x = window_crop_info.crop_offset_x;
-camera_info.window_crop_info_.crop_offset_y = window_crop_info.crop_offset_y;
-camera_info.window_crop_info_.dst_width = window_crop_info.dst_width;
-camera_info.window_crop_info_.dst_height = window_crop_info.dst_height;
-camera_info.window_crop_info_.src_width = window_crop_info.src_width;
-camera_info.window_crop_info_.src_height = window_crop_info.src_height;
 camera_info.gyro_timestamp = preview_param.gyro_timestamp;
+
+auto window_crop_info = preview_param.crop_info;
+camera_info.SetCalibration(calibration_offsets,
+                            window_crop_info.src_width, window_crop_info.src_height,
+                            window_crop_info.dst_width, window_crop_info.dst_height,
+                            window_crop_info.crop_offset_x, window_crop_info.crop_offset_y);
 
 stitcher->SetCameraInfo(camera_info);
 ```
 
-#### Preview stream processing of original data source
+### Handling Raw Preview Stream Data
 
-```c++
-// In the cameraSDK, you need to use the inheritance ins_camera :: StreamDelegate interface to achieve real-time data acquisition of the camera.
-// Real-time data from cameraSDK can be transmitted to MediaSDK through demo examples
+In CameraSDK, you need to implement the `ins_camera::StreamDelegate` interface to receive real-time camera data and forward it to MediaSDK:
 
+```cpp
 class StitchStreamDelegate : public ins_camera::StreamDelegate {
 public:
-    StitchDelegate(const std::shared_ptr<ins::RealTimeStitcher>& stitcher) :stitcher_(stitcher) {
-    }
-
-    virtual ~StitchDelegate() {
-    }
+    StitchStreamDelegate(const std::shared_ptr<ins::RealTimeStitcher>& stitcher) : stitcher_(stitcher) {}
+    ~StitchStreamDelegate() override {}
 
     void OnAudioData(const uint8_t* data, size_t size, int64_t timestamp) override {}
 
@@ -490,14 +523,14 @@ public:
     void OnVideoData(const uint8_t* data, size_t size, int64_t timestamp, uint8_t streamType, int stream_index) override {
         stitcher_->HandleVideoData(data, size, timestamp, streamType, stream_index);
     }
-     
-    // Anti-shake data
+
+    // Stabilization data
     void OnGyroData(const std::vector<ins_camera::GyroData>& data) override {
         std::vector<ins::GyroData> data_vec(data.size());
         memcpy(data_vec.data(), data.data(), data.size() * sizeof(ins_camera::GyroData));
         stitcher_->HandleGyroData(data_vec);
     }
- 
+
     // Exposure data
     void OnExposureData(const ins_camera::ExposureData& data) override {
         ins::ExposureData exposure_data{};
@@ -511,114 +544,198 @@ private:
 };
 ```
 
-#### Set preview parameters
+### Setting Preview Parameters
 
-##### stitching type
+- **Stitching type**: See "Common Parameters – Stitching Type" above.
+- **Stabilization parameters**: See "Common Parameters – Enable Stabilization" above.
+- **Lens guard**: See "Common Parameters – Lens Guard" above.
+- **Output frame size**: If not set, the output size defaults to the current preview resolution; if you need a higher output frame rate, lower the resolution.
+- **Video stream delay**: `void SetVideoDelayMs(int video_delay_ms)` introduces an artificial delay (in milliseconds) on the incoming video stream, used to align it with gyro data.
 
- Refer to the Stitching Type above
+### Getting Stitched Data
 
-##### Stabilization parameter
+The stitching result currently supports the RGBA format, obtained via the `SetStitchRealTimeDataCallback` callback. It's recommended not to perform time-consuming operations inside the callback:
 
-  Refer to the Stabilization Parameter Settings above
-
-##### Lens Guard
-
-   Refer to the Lens Guard Settings above
-
-##### Output screen size
-
-  For output size, if not set, the output size is the resolution of the current preview.
-
-  If the performance output frame rate, the resolution size can be reduced.
-
-#### Get stitched data
-
- The currently supported format for stitched data is RGBA.
-
- You can get the stitched video picture by setting `SetStitchRealTimeDataCallback` this callback interface. It is recommended not to perform time-consuming operations in this callback. The reference code is as follows:
-
-```c++
+```cpp
 stitcher->SetStitchRealTimeDataCallback([&](uint8_t* data[4], int linesize[4], int width, int height, int format, int64_t timestamp) {
-        show_image_ = cv::Mat(height, width, CV_8UC4, data[0]).clone();
-    });
+    show_image_ = cv::Mat(height, width, CV_8UC4, data[0]).clone();
+});
 ```
 
-#### Enable preview
+### Starting / Stopping the Preview
 
-```c++
-// Set up the delegation interface for camera real-time data
+```cpp
+// Start: set the delegate interface, start the camera preview, then start stitching
 std::shared_ptr<ins_camera::StreamDelegate> delegate = std::make_shared<StitchStreamDelegate>(stitcher);
 cam->SetStreamDelegate(delegate);
 ins_camera::LiveStreamParam param;
-//...
-// Open the preview of the camera
 if (cam->StartLiveStreaming(param)) {
-// Start the stitching process
     stitcher->StartStitch();
     std::cout << "successfully started live stream" << std::endl;
 }
-```
 
-#### Close preview
-
-```c++
-// Close camera preview stream
+// Stop: stop the camera preview stream first, then cancel stitching
 if (cam->StopLiveStreaming()) {
-// Stop the stitching process
     stitcher->CancelStitch();
     std::cout << "success!" << std::endl;
 }
 ```
 
-### Error Codes
+---
 
-| Error Code                | Error Message                                                |
-| ------------------------- | ------------------------------------------------------------ |
-| E_OPEN_FILE(1)            | Failed to open file                                          |
-| E_PARSE_METADATA(2)       | Failed to parse file metadata                                |
-| E_CREATE_OFFSCREEN(3)     | Common offscreen rendering failure                           |
-| E_CREATE_RENDER_MODEL(4)  | Failed to create render model                                |
-| E_FRAME_PARSE(5)          | Failed to retrieve data frame                                |
-| E_CREATE_RENDER_SOURCE(6) | Failed to create rendering data source                       |
-| E_UPDATE_RENDER_SOURCE(7) | Failed to update rendering data frame                        |
-| E_RENDER_FRAME(7)         | Failed to render frame                                       |
-| E_SAVE_FRAME(8)           | Failed to save image                                         |
-| E_VIDEO_FRAME_EXPORTOR(9) | Failed to create video frame exporter                        |
-| E_UNKNOWN(999)            | Unknown error, please provide detailed information for analysis |
+## Error Codes
 
-## FAQ
-How to write a Dockerfile if using Docker
+| Error Code | Message |
+|---|---|
+| `E_OPEN_FILE`(1) | Failed to open file |
+| `E_PARSE_METADATA`(2) | Failed to parse file trailer |
+| `E_CREATE_OFFSCREEN`(3) | Failed to create offscreen rendering |
+| `E_CREATE_RENDER_MODEL`(4) | Failed to create render model |
+| `E_FRAME_PARSE`(5) | Failed to get data frame |
+| `E_CREATE_RENDER_SOURCE`(6) | Failed to create render data source |
+| `E_UPDATE_RENDER_SOURCE`(7) | Failed to update data frame to render source |
+| `E_RENDER_FRAME`(8) | Failed to render data |
+| `E_SAVE_FRAME`(9) | Failed to save image |
+| `E_VIDEO_FRAME_EXPORTOR`(10) | Failed to create video frame extractor |
+| `E_FILE_TYPE_UNSUPPORT`(11) | Input file type is not supported |
+| `E_INTERNAL_ERROR`(998) | Internal SDK error |
+| `E_UNKNOWN`(999) | Unknown error; detailed information is needed for analysis |
+
+---
+
+## Using the Sample Programs
+
+### MediaSDKTest (Offline Stitching)
+
+> Tip: run `MediaSDKTest -help` at any time to see all parameters.
+
 ```
-FROM nvidia/cuda:12.1.1-devel-ubuntu22.04
-## Environment variables
-## ENV __NV_PRIME_RENDER_OFFLOAD=1
-## ENV __GLX_VENDOR_LIBRARY_NAME=nvidia
-RUN apt-get update && apt-get install -y \
-    gnupg \
-    software-properties-common \
-    libtiff5 \
-    libegl1 \
-    libxext6 \
-    libvulkan1 \
-    freeglut3-dev \
-    vulkan-tools \
-    libdc1394-25 
-## Copy application code
-COPY libMediaSDK-dev-3.0.3.3-20250616_094659-amd64.deb /home/
-COPY VID_20221010_123325_00_064.insv /home/
-COPY VID_20221010_123325_10_064.insv /home/
-RUN cd /home
-RUN apt-get update 
-RUN VULKAN_API_VERSION=$(dpkg -s libvulkan1 | grep -oP 'Version: [0-9|\.]+' | grep -oP '[0-9]+(\.[0-9]+)(\.[0-9]+)') && \
-    mkdir -pm755 /etc/vulkan/icd.d/ && echo "{\
-    \"file_format_version\" : \"1.0.0\",\
-    \"ICD\": {\
-        \"library_path\": \"libGLX_nvidia.so.0\",\
-        \"api_version\" : \"${VULKAN_API_VERSION}\"\
-    }}" > /etc/vulkan/icd.d/nvidia_icd.json && \
-    mkdir -pm755 /usr/share/glvnd/egl_vendor.d/ && echo "{\
-    \"file_format_version\" : \"1.0.0\",\
-    \"ICD\": {\
-        \"library_path\": \"libEGL_nvidia.so.0\"\
-    }}" > /usr/share/glvnd/egl_vendor.d/10_nvidia.json
+MediaSDKTest -inputs <input file> -output <output file> [options]
 ```
+
+Common options (note: these are **full-word long parameters**, not single letters):
+
+| Parameter | Description | Example |
+|------|------|------|
+| `-inputs` | Input file path (required; multiple lenses can pass multiple files) | `-inputs video.insv` |
+| `-output` | Output file path (required; video/image) | `-output out.mp4` |
+| `-model_root_dir` | Root directory of model files (default `<exe>/models/`, auto-detected) | `-model_root_dir ./models/` |
+| `-stitch_type` | Stitching algorithm: `optflow` (default) / `dynamicstitch` / `aistitch` | `-stitch_type aistitch` |
+| `-output_size` | Output resolution `<width>x<height>`, must satisfy 2:1 | `-output_size 3840x1920` |
+| `-bitrate` | Output bitrate (bps); `0` or omitted = same bitrate as source. For 8K, 80–142 Mbps is recommended | `-bitrate 142000000` |
+| `-enable_flowstate` | Enable stabilization (FlowState) | — |
+| `-enable_directionlock` | Enable direction lock | — |
+| `-enable_10bit` | 10-bit export (auto-switches to H.265; falls back if the source is 8-bit) | — |
+| `-enable_h265_encoder` | Use H.265 encoding; required to retain hardware encoding when resolution > 4096 | — |
+| `-enable_denoise` / `-enable_defringe` / `-enable_deflicker` | Denoise / Defringe (only X4 Air/X5/X6 supported, others skipped) / Deflicker | — |
+| `-enable_colorplus` | ColorPlus color enhancement | — |
+| `-enable_stitchfusion` | Chromatic/brightness fusion across lenses | — |
+| `-enable_coolingshell` | Cooling shell detection (only X4 Air/X5/X6 supported, others skipped) | — |
+| `-camera_accessory_type` | Lens guard type; see `CameraAccessoryType` for values (refer to `common.h`) | — |
+| `-image_sequence_dir <directory>` | Export as an image sequence (combine with `-image_type jpg/png`) | — |
+| `-export_frame_index` | Export specific frame indices, e.g. `20-50-30`; omit to export all frames | — |
+| `-exposure` / `-highlights` / `-shadows` / `-contrast` / `-brightness` / `-blackpoint` / `-saturation` / `-vibrance` / `-warmth` / `-tint` | Color grading parameters, range [-100,100] | — |
+| `-definition` | Definition/clarity, range [0,100] | — |
+| `-disable_cuda` | Disable GPU, use CPU path (for troubleshooting when the GPU environment is faulty) | — |
+| `-enable_soft_encode` / `-enable_soft_decode` | Force software encoding / software decoding (hardware encode/decode is the default; see the automatic downgrade rules in the "Software/Hardware Encode/Decode" section) | — |
+| `-image_processing_accel` | Rendering acceleration: `auto` (default) / `cpu` (use when encountering Vulkan errors) | — |
+| `--debug` | Turns on verbose logging (equivalent to `--log_level verbose`; only ERROR level is printed by default) | — |
+| `--log_level <level>` | Specifies the log level: `verbose`/`info`/`warning`/`error`/`fatal` | `--log_level info` |
+| `--log_file [path]` | Additionally writes SDK logs to a file (value optional; see the "Logging" section) | `--log_file ./logs` |
+
+Examples:
+
+```bash
+# Windows
+MediaSDKTest.exe -inputs D:\media\video.insv -output D:\output\out.mp4 -stitch_type optflow -output_size 3840x1920 -enable_flowstate
+
+# Linux
+./MediaSDKTest -inputs /data/video.insv -output /output/out.mp4 -stitch_type optflow -output_size 3840x1920
+
+# 8K + H.265, keeping hardware encoding, bitrate aligned with the desktop Studio app's 142Mbps
+MediaSDKTest.exe -inputs D:\media\video.insv -output D:\output\out_8k.mp4 -output_size 7680x3840 -bitrate 142000000 -enable_h265_encoder
+```
+
+### RealTimeStitcherSDKTest (Real-Time Stitching)
+
+```bash
+RealTimeStitcherSDKTest        # Connects to the camera for real-time stitching (see -help for parameters)
+```
+
+---
+
+## Environment Requirements
+
+### 1. Runtime Environment (using the SDK or running the sample programs)
+
+The SDK's installation package (.deb / Windows archive) already includes the major runtime dependencies, so there's no need to separately install the CUDA Toolkit, OpenCV, etc.
+
+| Item | Windows | Linux |
+|------|---------|-------|
+| CUDA runtime (cudart/cublas/cufft/npp/cusolver/cusparse/cudnn) | Bundled | Bundled in the .deb |
+| AI inference library (MNN) | Bundled | Bundled in the .deb |
+| OpenGL/X11 base libraries | Bundled | Bundled in the .deb |
+| Only requirement | NVIDIA driver (≥ 470) | NVIDIA driver (≥ 470) |
+
+Once installed, the sample programs can be run directly, with no environment variables to configure.
+
+### 2. Development Environment (compiling a project that integrates the SDK)
+
+If you're writing your own CMake project to integrate libMediaSDK.so / MediaSDK.lib, you'll need:
+
+#### CUDA Toolkit
+
+| Platform | Version | Download |
+|------|------|----------|
+| Windows | CUDA 10.2 | https://developer.nvidia.com/cuda-10.2-download-archive |
+| Linux | CUDA 11.7 | https://developer.nvidia.com/cuda-11-7-0-download-archive |
+
+After installation, make sure the `CUDA_PATH` (Windows) or `CUDA_TOOLKIT_ROOT_DIR` (Linux) environment variable points to the CUDA installation directory.
+
+#### Compiler
+
+| Platform | Compiler | Version |
+|------|--------|------|
+| Windows | Visual Studio | 2019 (MSVC v142) |
+| Linux | GCC | ≥ 11 |
+
+#### CMake Integration Example
+
+```cmake
+cmake_minimum_required(VERSION 3.14)
+project(MyApp)
+
+# Specify the SDK path
+set(INS_MEDIA_SDK_DIR "/usr/local/MediaSDK" CACHE PATH "InsMediaSDK install path")
+
+# Header files
+target_include_directories(myapp PRIVATE ${INS_MEDIA_SDK_DIR}/include/stitcher)
+
+# Link library
+target_link_libraries(myapp
+    ${INS_MEDIA_SDK_DIR}/lib/libMediaSDK.so          # Linux
+    # ${INS_MEDIA_SDK_DIR}/lib/MediaSDK.lib          # Windows
+    ${CUDA_LIBRARIES}                                 # CUDA runtime
+)
+
+# The runtime model files need to be copied into models/ alongside the executable
+```
+
+---
+
+## Model Files
+
+At runtime, a `models/` directory is required, containing the following algorithm model files (provided by the SDK package):
+
+| File | Purpose |
+|------|------|
+| `ai_stitcher.ins` | AI stitching optical flow model |
+| `defringe_hr_dynamic_7b56e80f.ins` | Purple fringing removal model (standard camera models) |
+| `defringe_air_hr_dynamic_6fbc2886.ins` | Purple fringing removal model (Air camera models) |
+| `jpg_denoise_9d006262.ins` | JPEG denoising model (used directly for inference in photo denoising; video denoising only checks its presence as a feature-enablement gate — the actual denoising parameters come from a built-in configuration and do not load this model file itself) |
+| `colorplus_model.ins` | Color enhancement model |
+| `deflicker_86ccba0d.ins` | Deflicker model |
+
+Default search path: `<executable directory>/models/`, which can be overridden via `SetModelFileRootDir()` / the `-model_root_dir` parameter.
+
+---

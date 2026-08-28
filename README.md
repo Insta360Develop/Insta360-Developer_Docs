@@ -12,16 +12,63 @@ Developer documentation for the Insta360 X / Go / ACE / Wave / Link series SDKs 
 
 ## 📚 Documentation (in-repo Markdown · fallback)
 
-**X Series** — [Overview](docs/en/x/index.md)
+Source files live under `docs/en/sdk/` (English) and `docs/ch/sdk/` (Chinese) — see [Repository structure](#repository-structure).
 
-| Doc set | Overview | Release Notes | API Reference |
-| --- | --- | --- | --- |
-| Android SDK | [Overview](docs/en/x/android/guide/index.md) | [Release Notes](docs/en/x/android/changelog.md) | [API](docs/en/x/android/api/index.md) |
-| iOS SDK | [Overview](docs/en/x/ios/guide/index.md) | [Release Notes](docs/en/x/ios/changelog.md) | [API](docs/en/x/ios/api/index.md) |
-| Desktop SDK | [Overview](docs/en/x/desktop/guide/index.md) | [Release Notes](docs/en/x/desktop/changelog.md) | [Camera SDK](docs/en/x/desktop/camera/index.md) · [Media SDK](docs/en/x/desktop/media/index.md) |
-| OSC Protocol | [Overview](docs/en/x/osc/guide/index.md) | — | [API](docs/en/x/osc/api/index.md) |
+**X / ACE / GO API & SDK** — one shared doc set for all three series
 
-**Other series (not yet available)**: [Go](docs/en/go/index.md) · [ACE](docs/en/ace/index.md) · [Wave](docs/en/wave/index.md) · [Link](docs/en/link/index.md)
+| Doc set | Overview | Release Notes | API Reference | Used by |
+| --- | --- | --- | --- | --- |
+| Android SDK | [Overview](docs/en/sdk/x-ace-go/android/guide.md) · [Dev Environment](docs/en/sdk/x-ace-go/android/environment.md) · [Camera Integration](docs/en/sdk/x-ace-go/android/camera-integration.md) · [Media Integration](docs/en/sdk/x-ace-go/android/media-integration.md) | [Release Notes](docs/en/sdk/x-ace-go/android/changelog.md) | [Camera SDK](docs/en/sdk/x-ace-go/android/camera-api.md) · [Media SDK](docs/en/sdk/x-ace-go/android/media-api.md) · [Legacy 1.x.x](docs/en/sdk/x-ace-go/android/legacy-api.md) (X only) | X · ACE · GO |
+| iOS SDK | [Overview](docs/en/sdk/x-ace-go/ios/guide.md) | [Release Notes](docs/en/sdk/x-ace-go/ios/changelog.md) | [API](docs/en/sdk/x-ace-go/ios/api.md) | X |
+| Desktop SDK | [Overview](docs/en/sdk/x-ace-go/desktop/guide.md) | [Release Notes](docs/en/sdk/x-ace-go/desktop/changelog.md) | [Camera SDK](docs/en/sdk/x-ace-go/desktop/camera.md) · [Media SDK](docs/en/sdk/x-ace-go/desktop/media.md) | X |
+| OSC Protocol | [Overview](docs/en/sdk/x-ace-go/osc/guide.md) | — | [API](docs/en/sdk/x-ace-go/osc/api.md) | X |
+
+**Link SDK** and **Wave SDK** — not yet available.
+
+**Series overviews**: [X](docs/en/x/index.md) · [ACE](docs/en/ace/index.md) · [GO](docs/en/go/index.md) · [Link](docs/en/link/index.md) · [Wave](docs/en/wave/index.md)
+
+---
+
+## Repository structure
+
+Content and routing are deliberately separated, so an SDK shared by several series is written once.
+
+```
+docs/{ch,en}/
+├─ index.md              home page — product series cards
+├─ x/  ace/  go/         series overview + thin per-series page shells
+├─ link/  wave/          series overview only — no SDK published yet
+└─ sdk/                  ← the single source of truth for all SDK content
+    └─ x-ace-go/         shared by the X, ACE and GO series
+        ├─ android/  guide.md · changelog.md          (platform-wide overview / release notes)
+        │            environment.md · camera-integration.md · media-integration.md
+        │            camera-api.md · media-api.md     (V2.x.x — X · ACE · GO)
+        │            legacy-api.md                    (V1.x.x — X series only)
+        ├─ ios/      guide.md · changelog.md · api.md
+        ├─ desktop/  guide.md · changelog.md · camera.md · media.md
+        └─ osc/      guide.md · api.md
+```
+
+- **`docs/{ch,en}/sdk/**`** holds the actual content. It is excluded from routing
+  (`srcExclude` in [docs/.vitepress/config.mts](docs/.vitepress/config.mts)), so these files
+  generate no pages of their own. **Edit documentation here.**
+- **`docs/{ch,en}/<series>/<platform>/…/index.md`** are one-line shells:
+  `<!--@include: ../../../sdk/x-ace-go/android/camera-api.md-->`. They own the URL and keep the
+  sidebar in that series' context. A single edit to a shared source updates every series.
+- **Navigation** is generated from `sdkGroups` and `seriesList` in
+  [docs/.vitepress/configs/shared.mts](docs/.vitepress/configs/shared.mts) — the single source
+  of truth for nav and sidebars. A doc set either lists its pages explicitly via `pages` (what
+  Android does) or falls back to the default `overview → changelog → api` pattern. A page may
+  carry `series: ['x']` to appear for some series only — that is how the legacy Android API doc
+  stays out of the ACE / GO sidebars.
+
+### Common tasks
+
+| Task | What to do |
+| --- | --- |
+| Fix or extend an SDK doc | Edit the file under `docs/{ch,en}/sdk/…` — all series pick it up |
+| A series gains a platform (e.g. ACE adds iOS) | Add the key to that series' `platforms` in `shared.mts`, then add the shell pages under `docs/{ch,en}/ace/ios/` |
+| Add a whole new SDK | Add a group to `sdkGroups`, put the content in `docs/{ch,en}/sdk/<group>/`, and reference it from `seriesList` |
 
 ---
 

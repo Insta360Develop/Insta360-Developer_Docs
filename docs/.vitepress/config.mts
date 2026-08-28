@@ -16,6 +16,10 @@ export default defineConfig({
   cleanUrls: true,
   metaChunk: true,
 
+  // docs/{ch,en}/sdk/** 是共享文档的唯一维护源，由各系列下的壳页用
+  // <!--@include: --> 引入，本身不生成页面（否则站内搜索会出现重复结果）
+  srcExclude: ['**/sdk/**'],
+
   head: [
     ['link', { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' }],
     ['meta', { name: 'theme-color', content: '#0a84ff' }]

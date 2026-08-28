@@ -1,45 +1,35 @@
 # Android SDK Overview
 
-The X series **Android SDK** connects to the camera, gets/sets camera parameters, controls photo and video capture, downloads files, upgrades firmware, and supports video and image export. It is split into a **Camera SDK** (live camera control) and a **Media SDK** (media stitching / export).
+The **Android SDK** connects to the camera, gets/sets camera parameters, controls photo and video capture, downloads files, upgrades firmware, and supports video and image export. It ships as two modules that can be adopted independently:
 
-## Supported cameras
+| Module | Dependency | Scope |
+| --- | --- | --- |
+| **Camera SDK** | `com.arashivision.sdk:sdk-camera` | Live camera control: connection, capture, parameters, live preview, file management, firmware upgrade |
+| **Media SDK** | `com.arashivision.sdk:sdk-media` | Media processing: panoramic playback, image stitching, media export, preview rendering |
 
-ONE R, ONE RS, ONE RS 1-Inch, ONE X, X2, X3, X4, X4 Air, X5.
+## Versions
 
-## Getting started
+Two major versions of the Android SDK exist; their APIs are not compatible:
 
-The Camera SDK and Media SDK share the same Maven repository; add only the dependencies you need.
+| Version | Series | Status | Docs |
+| --- | --- | --- | --- |
+| **V2.x.x** (current) | X, ACE, GO | ✅ Actively maintained | See "Getting started" below |
+| V1.x.x (legacy) | X only | 🔒 Maintenance only, no new features | [API Reference (Legacy 1.x.x)](/en/x/android/legacy-api/) |
 
-1. Add the Maven repository to the `repositories` block of the project-level `build.gradle` (URL and credentials are in the SDK Demo):
-
-```Groovy
-allprojects {
-    repositories {
-        ...
-        maven {
-            url 'XXXXXX'
-            credentials {
-                username = '***'
-                password = '***'
-            }
-        }
-    }
-}
-```
-
-2. Import the dependencies you need in the module `build.gradle`:
-
-```Groovy
-dependencies {
-    implementation 'com.arashivision.sdk:sdkcamera:x.x.x' // Camera SDK
-    implementation 'com.arashivision.sdk:sdkmedia:x.x.x'  // Media SDK
-}
-```
-
-> SDK initialization: see [API Reference · Initialization](../api/).
-
-::: warning Note
-The 32-bit library (`armeabi-v7a`) is no longer maintained — build with the 64-bit library (`arm64-v8a`).
+::: tip Use V2.x.x for new projects
+V2.x.x is the current version: the X, ACE and GO series share one API with identical usage.
+V1.x.x is kept for existing integrations and ships an API reference only.
 :::
 
-➡️ Parameters, return values, examples and error codes for every interface are in the **[API Reference](../api/)**.
+## Getting started (V2.x.x)
+
+Read these in order to complete an integration:
+
+1. **[Development Environment](../environment/)** — Android Studio / Gradle / SDK version requirements, Maven repository setup, permission declarations
+2. **[Camera SDK Integration](../camera-integration/)** — the full path from initialization to connecting, capturing and previewing
+3. **[Media SDK Integration](../media-integration/)** — the full path for playback, stitching and export
+4. Look up API details in the **[Camera SDK API](../camera-api/)** and **[Media SDK API](../media-api/)**
+
+## Release notes
+
+Per-version changes are listed in the **[Release Notes](../changelog)**.

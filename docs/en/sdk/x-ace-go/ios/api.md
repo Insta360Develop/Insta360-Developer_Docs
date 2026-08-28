@@ -237,6 +237,8 @@ INSCameraManager.shared().commandManager.getOptionsWithTypes(optionTypes) { (err
 
 ##### SD Card Total Space (Total Capacity Size) and Free Space (Available Capacity Size)
 
+Storage state struct `INSCameraStorageStatus`:
+
 ```Python
 @interface INSCameraStorageStatus : NSObject
 // SD card status
@@ -245,24 +247,56 @@ INSCameraManager.shared().commandManager.getOptionsWithTypes(optionTypes) { (err
 @property (nonatomic) int64_t freeSpace;
 // Total capacity size
 @property (nonatomic) int64_t totalSpace;
-
-// TODO: Restrict access to certain SDKs
+// Storage location
 @property (nonatomic) INSStorageCardLocation cardLocation;
-
 @end
-let optionTypes = [
-            NSNumber(value: INSCameraOptionsType.storageState.rawValue),
-            ];
+```
 
+Request `storageState` and read the total/free space from `storageStatus`:
+
+```swift
+let optionTypes = [
+    NSNumber(value: INSCameraOptionsType.storageState.rawValue),
+]
 INSCameraManager.shared().commandManager.getOptionsWithTypes(optionTypes) { (err, options, successTypes) in
-    guard let options = options else {
-        self.showAlert("get options", String(describing: err))
-        return
+    guard let options = options else { return }
+    if let s = options.storageStatus {
+        print("total \(s.totalSpace)  free \(s.freeSpace)")
     }
 }
 ```
 
+> `totalSpace` / `freeSpace` are in bytes (`int64_t`); when converting to GB use floating-point division: `Double(s.totalSpace) / Double(1024 * 1024 * 1024)`.
+
+**X6 special handling**: X6 supports both an SD card and internal storage, which must be read separately. Add `storageStateList` to the request; read the SD card from the `cardLocation == .SD` item in `storageStateList`, and the internal storage from `cameraStorageStatus`:
+
+```swift
+let optionTypes = [
+    NSNumber(value: INSCameraOptionsType.storageState.rawValue),
+    NSNumber(value: INSCameraOptionsType.storageStateList.rawValue),
+]
+INSCameraManager.shared().commandManager.getOptionsWithTypes(optionTypes) { (err, options, successTypes) in
+    guard let options = options else { return }
+
+    // SD card
+    let sdStatus = (options.storageStateList as? [INSCameraStorageStatus])?.first(where: { $0.cardLocation == .SD })
+    // Internal storage
+    let innerStatus = options.cameraStorageStatus
+
+    if let s = sdStatus {
+        print("SD card  total \(s.totalSpace)  free \(s.freeSpace)")
+    }
+    if let s = innerStatus {
+        print("Internal total \(s.totalSpace)  free \(s.freeSpace)")
+    }
+}
+```
+
+> `INSStorageCardLocation` values: `.camera`(0) / `.reader`(1) / `.inner`(2) / `.SD`(3).
+
 ##### SD Card Status
+
+Request `storageState` and read the state from `storageStatus.cardState`:
 
 ```swift
 let optionTypes = [
@@ -298,6 +332,10 @@ INSCameraManager.shared().commandManager.getOptionsWithTypes(optionTypes) { (err
     }
 }
 ```
+
+> `cardState` values: `Normal` / `NoCard` / `NoSpace` / `InvalidFormat` / `WriteProtectCard` / `UnknownError`.
+
+**X6 special handling**: X6 reads the two separately — the SD card state from the `cardLocation == .SD` item's `cardState` in `storageStateList`, and the internal storage state from `cameraStorageStatus.cardState` (add `storageStateList` to the request).
 
 ##### Battery Level Information
 
@@ -495,6 +533,19 @@ Usage Notes:
 - `activeSensorDevice`: Pass the sensors type to switch to (e.g., .front, .rear, .all)
 
 ### Preview Module
+
+> ⚠️ X6 low-power mode: When preview is not started, X6 enters a low-power mode, so photo/video capture is unavailable right after connecting. The fix is to **automatically call the "enter preview page" interface once after the X6 connects successfully**, which brings the camera out of low-power mode. "Enter preview page" is done via `setAppAccessFileState(.liveView)` .
+>
+> ```swift
+> // In the camera-connected callback (cameraState == .connected), for X6:
+> if INSCameraManager.shared().currentCamera?.name == kInsta360CameraNameC9 {
+>     INSCameraManager.shared().commandManager.setAppAccessFileState(.liveView) { _ in
+>         // Camera exits low-power mode; photo/video capture works normally afterwards
+>     }
+> }
+> ```
+>
+> Note: The `setAppAccessFileState(.liveView)` used here is the **same command** as in "X6 Lock-Screen Special Handling" below — whether the camera locks depends on whether a live stream is running at call time. Here the camera was just connected with no stream, so it only wakes the sensor to exit low-power mode and does **not** lock the screen; locking happens only when a stream is already running (as on the preview page).
 
 The preview has the following core classes; for details, refer to:`demo：CameraConfigByJsonController`
 
@@ -1228,6 +1279,58 @@ Stop recording
                        completion:(void (^)(NSError * _Nullable error, INSCameraResources * _Nullable res))completion;
 ```
 
+##### Storage Location (Internal Storage + SD Card)
+
+Some models (e.g. X6) support both **internal storage** and an **SD card**; other models have only the SD card.
+
+- Dual-storage models (X6): set `options.hasInternalAndSDStorage` to `true`. In the result, SD-card data is in `res.sdResources` and internal data is in `res.cameraResources`; merge them as needed. The two storages use different path prefixes: SD card is `/DCIM/Camera01/...`, internal is `/storage_internal/DCIM/Camera01/...`.
+- Single-storage models: keep `hasInternalAndSDStorage` as `false`; data is only in `res.cameraResources` and can be used directly (also merging `sdResources` would duplicate the data).
+
+```swift
+let options = INSGetFileListOptions()
+options.type = .sdAndCamera
+options.hasInternalAndSDStorage = INSCameraManager.shared().currentCamera?.name == kInsta360CameraNameC9
+
+INSCameraManager.shared().commandManager.fetchPhotoList(with: options) { err, res in
+    var list: [INSCameraBaseFileInfo] = []
+    if INSCameraManager.shared().currentCamera?.name == kInsta360CameraNameC9 {
+        if let sd = res?.sdResources { list.append(contentsOf: sd) }      // SD card
+        if let cam = res?.cameraResources { list.append(contentsOf: cam) } // internal
+    } else {
+        list = res?.cameraResources ?? []
+    }
+    // use the merged list
+}
+```
+
+> The video list uses `fetchVideoList(with:)`, with the same usage as the photo list.
+
+##### Switch Main Storage (SD Card / Internal Storage)
+
+On dual-storage models (e.g. X6), use `setMainStorage` to switch the main storage location used for capture — SD card or internal storage. The parameter is the `INSStorageCardLocation` enum; the two commonly used values are `.SD` (SD card) and `.inner` (internal storage). See "Set Main Storage" in the demo's `CameraSettingViewController`.
+
+```swift
+// Switch to SD card
+INSCameraManager.shared().commandManager.setMainStorage(.SD) { error in
+    if let error = error {
+        print("switch storage failed: \(error.localizedDescription)")
+        return
+    }
+    print("switched to SD card")
+}
+
+// Switch to internal storage
+INSCameraManager.shared().commandManager.setMainStorage(.inner) { error in
+    if let error = error {
+        print("switch storage failed: \(error.localizedDescription)")
+        return
+    }
+    print("switched to internal storage")
+}
+```
+
+> Only meaningful on dual-storage models; single-storage models have only the SD card and need no switching.
+
 #### File Download
 
 ```Plain
@@ -1479,6 +1582,29 @@ INSCameraManager.shared().commandManager.setAppAccessFileState(state, completion
     // The callback completion can be handled here
 })
 ```
+
+##### X6 Lock-Screen Special Handling
+
+On X6, the live preview stream (`startLiveStream`) must be started before locking the screen, otherwise the lock-screen call has no effect. So on X6 the "start stream" logic must be wrapped into the lock-screen flow: start the stream first, then call `setAppAccessFileState(.liveView)` to lock once the stream is running. Starting the stream only brings the camera into a lockable state; the app can receive the stream normally but does not need to process/display it.
+
+> Note: Locking uses the **same** `setAppAccessFileState(.liveView)` command as "X6 low-power mode" above; the only difference is whether a stream is running at call time — with no stream (e.g. right after connecting) it only wakes the camera out of low-power mode and does not lock, while with a stream running it locks. So exiting low-power mode can be done by calling it directly after connecting, whereas locking must start the stream first. Unlock with `setAppAccessFileState(.idle)`.
+
+```swift
+// Pseudocode: X6 lock screen = start the stream first, then lock
+if INSCameraManager.shared().currentCamera?.name == kInsta360CameraNameC9 {
+    // 1. Start the stream first (via INSCameraMediaSession, which sends StartLiveStream internally)
+    mediaSession.startRunning { error in
+        guard error == nil else { return }
+        // 2. Lock the screen after the stream has started
+        INSCameraManager.shared().commandManager.setAppAccessFileState(.liveView) { _ in }
+    }
+} else {
+    // Other models: lock directly
+    INSCameraManager.shared().commandManager.setAppAccessFileState(.liveView) { _ in }
+}
+```
+
+> After unlocking (`setAppAccessFileState(.idle)`), if the stream was started solely to satisfy this requirement, call `mediaSession.stopRunning` to stop it and avoid keeping the stream occupied.
 
 #### Turn off Camera
 

@@ -1,4 +1,43 @@
-# 接口文档
+# 接口文档(旧版 1.x.x)
+
+::: warning 这是旧版文档
+本页是 **Android SDK V1.x.x** 的接口文档,该版本仅支持 **X 系列**相机(ONE R、ONE RS、ONE RS 一英寸、ONE X、X2、X3、X4、X4 Air、X5),不再新增功能。
+新项目请使用 V2.x.x,查阅[Camera SDK 接口文档](../camera-api/)与 [Media SDK 接口文档](../media-api/)。
+:::
+
+## 环境准备
+
+Camera SDK 与 Media SDK 共用同一 Maven 仓库,按需引入对应依赖即可。
+
+1. 将 Maven 地址添加到项目根目录 `build.gradle` 的 `repositories`(地址与凭据见 SDK Demo):
+
+```Groovy
+allprojects {
+    repositories {
+        ...
+        maven {
+            url 'XXXXXX'
+            credentials {
+                username = '***'
+                password = '***'
+            }
+        }
+    }
+}
+```
+
+2. 在模块 `build.gradle` 中按需导入依赖:
+
+```Groovy
+dependencies {
+    implementation 'com.arashivision.sdk:sdkcamera:x.x.x' // Camera SDK
+    implementation 'com.arashivision.sdk:sdkmedia:x.x.x'  // Media SDK
+}
+```
+
+::: warning 注意
+32 位库(`armeabi-v7a`)已不再维护,请使用 64 位库(`arm64-v8a`)进行构建!
+:::
 
 ## Camera SDK功能
 

@@ -1,4 +1,43 @@
-# API Reference
+# API Reference (Legacy 1.x.x)
+
+::: warning This is legacy documentation
+This is the API reference for **Android SDK V1.x.x**. That version supports the **X series only** (ONE R, ONE RS, ONE RS 1-Inch, ONE X, X2, X3, X4, X4 Air, X5) and receives no new features.
+For new projects use V2.x.x — see the [Camera SDK API](../camera-api/) and [Media SDK API](../media-api/).
+:::
+
+## Getting started
+
+The Camera SDK and Media SDK share the same Maven repository; add only the dependencies you need.
+
+1. Add the Maven repository to the `repositories` block of the project-level `build.gradle` (URL and credentials are in the SDK Demo):
+
+```Groovy
+allprojects {
+    repositories {
+        ...
+        maven {
+            url 'XXXXXX'
+            credentials {
+                username = '***'
+                password = '***'
+            }
+        }
+    }
+}
+```
+
+2. Import the dependencies you need in the module `build.gradle`:
+
+```Groovy
+dependencies {
+    implementation 'com.arashivision.sdk:sdkcamera:x.x.x' // Camera SDK
+    implementation 'com.arashivision.sdk:sdkmedia:x.x.x'  // Media SDK
+}
+```
+
+::: warning Note
+The 32-bit library (`armeabi-v7a`) is no longer maintained — build with the 64-bit library (`arm64-v8a`).
+:::
 
 ## Camera SDK Function
 

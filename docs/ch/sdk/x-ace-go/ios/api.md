@@ -237,6 +237,8 @@ INSCameraManager.shared().commandManager.getOptionsWithTypes(optionTypes) { (err
 
 ##### SD卡总容量和剩余容量
 
+存储状态结构 `INSCameraStorageStatus`：
+
 ```Python
 @interface INSCameraStorageStatus : NSObject
 // SD卡状态
@@ -245,24 +247,56 @@ INSCameraManager.shared().commandManager.getOptionsWithTypes(optionTypes) { (err
 @property (nonatomic) int64_t freeSpace;
 // 总容量
 @property (nonatomic) int64_t totalSpace;
-
-// TODO: 需要限制部分SDK访问
+// 存储位置
 @property (nonatomic) INSStorageCardLocation cardLocation;
-
 @end
-let optionTypes = [
-            NSNumber(value: INSCameraOptionsType.storageState.rawValue),
-            ];
+```
 
+请求 `storageState`，从 `storageStatus` 读取总容量与剩余容量：
+
+```swift
+let optionTypes = [
+    NSNumber(value: INSCameraOptionsType.storageState.rawValue),
+]
 INSCameraManager.shared().commandManager.getOptionsWithTypes(optionTypes) { (err, options, successTypes) in
-    guard let options = options else {
-        self.showAlert("get options", String(describing: err))
-        return
+    guard let options = options else { return }
+    if let s = options.storageStatus {
+        print("总容量 \(s.totalSpace)  剩余 \(s.freeSpace)")
     }
 }
 ```
 
+> `totalSpace` / `freeSpace` 单位为字节（`int64_t`），换算 GB 时用浮点除：`Double(s.totalSpace) / Double(1024 * 1024 * 1024)`。
+
+**X6 特殊处理**：X6 同时支持 SD 卡与机内存储，需分别获取。请求时额外带上 `storageStateList`，SD 卡取 `storageStateList` 中 `cardLocation == .SD` 的项，机内存储取 `cameraStorageStatus`：
+
+```swift
+let optionTypes = [
+    NSNumber(value: INSCameraOptionsType.storageState.rawValue),
+    NSNumber(value: INSCameraOptionsType.storageStateList.rawValue),
+]
+INSCameraManager.shared().commandManager.getOptionsWithTypes(optionTypes) { (err, options, successTypes) in
+    guard let options = options else { return }
+
+    // SD 卡
+    let sdStatus = (options.storageStateList as? [INSCameraStorageStatus])?.first(where: { $0.cardLocation == .SD })
+    // 机内存储
+    let innerStatus = options.cameraStorageStatus
+
+    if let s = sdStatus {
+        print("SD 卡  总容量 \(s.totalSpace)  剩余 \(s.freeSpace)")
+    }
+    if let s = innerStatus {
+        print("机内  总容量 \(s.totalSpace)  剩余 \(s.freeSpace)")
+    }
+}
+```
+
+> `INSStorageCardLocation` 取值：`.camera`(0) / `.reader`(1) / `.inner`(2) / `.SD`(3)。
+
 ##### SD卡状态
+
+请求 `storageState`，从 `storageStatus.cardState` 读取状态：
 
 ```swift
 let optionTypes = [
@@ -298,6 +332,10 @@ INSCameraManager.shared().commandManager.getOptionsWithTypes(optionTypes) { (err
     }
 }
 ```
+
+> `cardState` 取值：`Normal`(正常) / `NoCard`(无卡) / `NoSpace`(已满) / `InvalidFormat`(格式错误) / `WriteProtectCard`(写保护) / `UnknownError`(未知错误)。
+
+**X6 特殊处理**：X6 需分别读取——SD 卡状态取 `storageStateList` 中 `cardLocation == .SD` 的项的 `cardState`，机内存储状态取 `cameraStorageStatus.cardState`（请求时带上 `storageStateList`）。
 
 ##### 电池电量信息
 
@@ -495,6 +533,19 @@ INSCameraManager.shared().commandManager.setActiveSensorWith(activeSensorDevice)
 - `activeSensorDevice`：传入需要切换到的镜头类型（例如 .front、.rear、.all）
 
 ### 预览模块
+
+> ⚠️ X6 低功耗模式说明：X6 在不开预览时会进入低功耗模式，导致连接后无法直接拍照/录像。解决方案是在**连接 X6 相机成功后，自动调用一次「进入预览页面」接口**，让相机退出低功耗模式。「进入预览页面」通过 `setAppAccessFileState(.liveView)` 实现。
+>
+> ```swift
+> // 在相机连接成功的回调里（cameraState == .connected），对 X6 调用：
+> if INSCameraManager.shared().currentCamera?.name == kInsta360CameraNameC9 {
+>     INSCameraManager.shared().commandManager.setAppAccessFileState(.liveView) { _ in
+>         // 相机退出低功耗模式，后续拍照/录像正常
+>     }
+> }
+> ```
+>
+> 说明：这里的 `setAppAccessFileState(.liveView)` 与下文「X6 锁屏特殊处理」是**同一个命令**，相机是否锁屏取决于调用时有没有实时流。此处刚连接、无流，只唤醒 sensor 退出低功耗，**不会锁屏**；预览页已开流时再调才锁屏。
 
 预览有以下几个核心类，具体参考`demo：CameraConfigByJsonController`
 
@@ -1213,6 +1264,58 @@ INSCameraManager.shared().commandManager.stopCapture(with: nil, completion: { (e
                        completion:(void (^)(NSError * _Nullable error, INSCameraResources * _Nullable res))completion;
 ```
 
+##### 存储位置说明（机内存储 + SD 卡）
+
+部分机型（如 X6）同时支持**机内存储**和 **SD 卡**两种存储；其余机型仅有 SD 卡。
+
+- 双存储机型（X6）：需将 `options.hasInternalAndSDStorage` 设为 `true`。返回结果中，SD 卡数据在 `res.sdResources`，机内数据在 `res.cameraResources`，需按需合并使用。两种存储的文件路径前缀不同：SD 卡为 `/DCIM/Camera01/...`，机内为 `/storage_internal/DCIM/Camera01/...`。
+- 单存储机型：`hasInternalAndSDStorage` 保持 `false`，数据只在 `res.cameraResources`，直接使用即可（若也合并 `sdResources` 会导致数据重复）。
+
+```swift
+let options = INSGetFileListOptions()
+options.type = .sdAndCamera
+options.hasInternalAndSDStorage = INSCameraManager.shared().currentCamera?.name == kInsta360CameraNameC9
+
+INSCameraManager.shared().commandManager.fetchPhotoList(with: options) { err, res in
+    var list: [INSCameraBaseFileInfo] = []
+    if INSCameraManager.shared().currentCamera?.name == kInsta360CameraNameC9 {
+        if let sd = res?.sdResources { list.append(contentsOf: sd) }      // SD 卡
+        if let cam = res?.cameraResources { list.append(contentsOf: cam) } // 机内
+    } else {
+        list = res?.cameraResources ?? []
+    }
+    // 使用合并后的 list
+}
+```
+
+> 视频列表用 `fetchVideoList(with:)`，用法与照片列表一致。
+
+##### 切换主存储位置（SD 卡 / 机内存储）
+
+双存储机型（如 X6）可通过 `setMainStorage` 切换拍摄时的主存储位置——存到 SD 卡还是机内存储。参数为 `INSStorageCardLocation` 枚举，常用 `.SD`（SD 卡）和 `.inner`（机内存储）。参考 demo 的 `CameraSettingViewController`「Set Main Storage」。
+
+```swift
+// 切到 SD 卡
+INSCameraManager.shared().commandManager.setMainStorage(.SD) { error in
+    if let error = error {
+        print("切换存储失败: \(error.localizedDescription)")
+        return
+    }
+    print("已切到 SD 卡")
+}
+
+// 切到机内存储
+INSCameraManager.shared().commandManager.setMainStorage(.inner) { error in
+    if let error = error {
+        print("切换存储失败: \(error.localizedDescription)")
+        return
+    }
+    print("已切到机内存储")
+}
+```
+
+> 仅双存储机型有意义；单存储机型只有 SD 卡，无需切换。
+
 #### 文件下载
 
 ```Plain
@@ -1464,6 +1567,29 @@ INSCameraManager.shared().commandManager.setAppAccessFileState(state, completion
     // 完成回调可以在这里处理
 })
 ```
+
+##### X6 锁屏特殊处理
+
+X6 在锁屏前必须先开启实时预览流（`startLiveStream`），否则调用锁屏接口不生效。因此在 X6 上，需要把「开流」逻辑封装进锁屏流程：先开流，成功后再调 `setAppAccessFileState(.liveView)` 锁屏。开流只为让相机进入可锁屏状态，App 端可以正常接收流但不做处理/显示。
+
+> 注：锁屏与上文「X6 低功耗模式」用的是同一个 `setAppAccessFileState(.liveView)` 命令，区别只在于调用时是否有流——无流时（如刚连接）它只唤醒相机退低功耗、不锁屏；有流时才锁屏。所以退低功耗可连接后直接调，锁屏必须先开流。
+
+```swift
+// 伪代码：X6 锁屏 = 先开流，再锁屏
+if INSCameraManager.shared().currentCamera?.name == kInsta360CameraNameC9 {
+    // 1. 先开流（通过 INSCameraMediaSession 启动，内部会下发 StartLiveStream）
+    mediaSession.startRunning { error in
+        guard error == nil else { return }
+        // 2. 开流成功后再锁屏
+        INSCameraManager.shared().commandManager.setAppAccessFileState(.liveView) { _ in }
+    }
+} else {
+    // 其它机型直接锁屏
+    INSCameraManager.shared().commandManager.setAppAccessFileState(.liveView) { _ in }
+}
+```
+
+> 解锁（`setAppAccessFileState(.idle)`）后，若锁屏时是专门为满足该要求而开的流，应调用 `mediaSession.stopRunning` 停止，避免流持续占用。
 
 #### 关闭相机
 

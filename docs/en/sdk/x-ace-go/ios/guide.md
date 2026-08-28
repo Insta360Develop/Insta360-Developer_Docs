@@ -4,7 +4,7 @@ The X series **iOS SDK** connects to the camera, gets/sets camera parameters, co
 
 ## Supported cameras
 
-ONE R, ONE RS, ONE RS 1-Inch, ONE X, X2, X3, X4, X4 Air, X5.
+X6, X5, X4 Air, X4, X3, X2, ONE X, ONE R, ONE RS, ONE RS 1-Inch.
 
 ## Getting started
 

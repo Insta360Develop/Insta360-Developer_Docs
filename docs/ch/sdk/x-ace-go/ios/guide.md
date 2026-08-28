@@ -4,7 +4,7 @@ X 系列 **iOS SDK** 用于连接相机、设置与获取相机参数、控制�
 
 ## 支持机型
 
-ONE R、ONE RS、ONE RS 1-Inch、ONE X、X2、X3、X4、X4 Air、X5。
+X6、X5、X4 Air、X4、X3、X2、ONE X、ONE R、ONE RS、ONE RS 一英寸。
 
 ## 环境准备
 
