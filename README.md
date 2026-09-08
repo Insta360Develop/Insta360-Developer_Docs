@@ -23,7 +23,13 @@ Source files live under `docs/en/sdk/` (English) and `docs/ch/sdk/` (Chinese) �
 | Desktop SDK | [Overview](docs/en/sdk/x-ace-go/desktop/guide.md) | [Release Notes](docs/en/sdk/x-ace-go/desktop/changelog.md) | [Camera SDK](docs/en/sdk/x-ace-go/desktop/camera.md) · [Media SDK](docs/en/sdk/x-ace-go/desktop/media.md) | X |
 | OSC Protocol | [Overview](docs/en/sdk/x-ace-go/osc/guide.md) | — | [API](docs/en/sdk/x-ace-go/osc/api.md) | X |
 
-**Link SDK** and **Wave SDK** — not yet available.
+**Link SDK** — for the Link series
+
+| Doc set | Developer Guide | Download | Used by |
+| --- | --- | --- | --- |
+| UVC Camera SDK | [Developer Guide](docs/en/sdk/link/uvc/guide.md) | [Insta360Develop/Link-SDK](https://github.com/Insta360Develop/Link-SDK) | Link |
+
+**Wave SDK** — not yet available.
 
 **Series overviews**: [X](docs/en/x/index.md) · [ACE](docs/en/ace/index.md) · [GO](docs/en/go/index.md) · [Link](docs/en/link/index.md) · [Wave](docs/en/wave/index.md)
 
@@ -37,16 +43,19 @@ Content and routing are deliberately separated, so an SDK shared by several seri
 docs/{ch,en}/
 ├─ index.md              home page — product series cards
 ├─ x/  ace/  go/         series overview + thin per-series page shells
-├─ link/  wave/          series overview only — no SDK published yet
+├─ link/                 series overview + page shells (UVC Camera SDK)
+├─ wave/                 series overview only — no SDK published yet
 └─ sdk/                  ← the single source of truth for all SDK content
-    └─ x-ace-go/         shared by the X, ACE and GO series
-        ├─ android/  guide.md · changelog.md          (platform-wide overview / release notes)
-        │            environment.md · camera-integration.md · media-integration.md
-        │            camera-api.md · media-api.md     (V2.x.x — X · ACE · GO)
-        │            legacy-api.md                    (V1.x.x — X series only)
-        ├─ ios/      guide.md · changelog.md · api.md
-        ├─ desktop/  guide.md · changelog.md · camera.md · media.md
-        └─ osc/      guide.md · api.md
+    ├─ x-ace-go/         shared by the X, ACE and GO series
+    │   ├─ android/  guide.md · changelog.md          (platform-wide overview / release notes)
+    │   │            environment.md · camera-integration.md · media-integration.md
+    │   │            camera-api.md · media-api.md     (V2.x.x — X · ACE · GO)
+    │   │            legacy-api.md                    (V1.x.x — X series only)
+    │   ├─ ios/      guide.md · changelog.md · api.md
+    │   ├─ desktop/  guide.md · changelog.md · camera.md · media.md
+    │   └─ osc/      guide.md · api.md
+    └─ link/            Link series
+        └─ uvc/      guide.md                         (UVC Camera SDK developer guide)
 ```
 
 - **`docs/{ch,en}/sdk/**`** holds the actual content. It is excluded from routing

@@ -68,8 +68,9 @@ interface SdkGroup {
 /**
  * SDK 分组总表 —— 共享文档的唯一数据源。
  * x-ace-go：X / ACE / GO 三个系列共用同一套 SDK，文档只维护一份。
- * link / wave：暂无 SDK，只在系列概述里标注待开放，因此 docSets 为空，
- *              sdk/ 下也不建目录，等有内容时再补。
+ * link：Link 系列独占的 UVC Camera SDK，与 X / ACE / GO 完全不通用。
+ * wave：暂无 SDK，只在系列概述里标注待开放，因此 docSets 为空，
+ *       sdk/ 下也不建目录，等有内容时再补。
  */
 export const sdkGroups: SdkGroup[] = [
   {
@@ -118,7 +119,16 @@ export const sdkGroups: SdkGroup[] = [
     key: 'link',
     ch: 'Link SDK',
     en: 'Link SDK',
-    docSets: []
+    docSets: [
+      {
+        // Link 系列只有一套 UVC Camera SDK（Windows / macOS / Linux），
+        // 内容是一份完整的开发者指南，不拆概述与接口文档。
+        key: 'uvc',
+        ch: 'UVC Camera SDK',
+        en: 'UVC Camera SDK',
+        pages: [{ key: 'guide', ch: '开发者指南', en: 'Developer Guide' }]
+      }
+    ]
   },
   {
     key: 'wave',
@@ -184,8 +194,7 @@ export const seriesList: Series[] = [
     ch: 'Link 系列',
     en: 'Link Series',
     group: 'link',
-    platforms: [],
-    comingSoon: true
+    platforms: ['uvc']
   }
 ]
 

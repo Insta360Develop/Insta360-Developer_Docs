@@ -51,7 +51,9 @@ import { withBase } from 'vitepress'
     <span class="icon">🔗</span>
     <h3>Link Series</h3>
     <div class="tags">
-      <span class="tag is-planned">Coming soon</span>
+      <span class="tag">Windows</span>
+      <span class="tag">macOS</span>
+      <span class="tag">Linux</span>
     </div>
   </a>
 </div>
