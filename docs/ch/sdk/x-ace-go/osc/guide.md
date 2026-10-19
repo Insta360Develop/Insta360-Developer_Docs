@@ -4,7 +4,7 @@
 
 ## 支持机型
 
-ONE X、ONE X2、ONE R、ONE RS、X3、X4、X4 Air、X5。
+ONE X、ONE X2、ONE R、ONE RS、X3、X4、X4 Air、X5、X6。
 
 ## 连接方式
 

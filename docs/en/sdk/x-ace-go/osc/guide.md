@@ -4,7 +4,7 @@ The **OSC protocol** is based on the [Google OSC (Open Spherical Camera) specifi
 
 ## Supported cameras
 
-ONE X, ONE X2, ONE R, ONE RS, X3, X4, X4 Air, X5.
+ONE X, ONE X2, ONE R, ONE RS, X3, X4, X4 Air, X5, X6.
 
 ## Connecting
 
