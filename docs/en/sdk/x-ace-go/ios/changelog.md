@@ -1,5 +1,14 @@
 # Release Notes
 
+## V1.11.3
+
+**Released**: 2026-10-13
+
+1. Support X6
+2. Fixed an issue where no URL was returned after shooting ended on X6
+3. Fixed issues with stitching and playback of footage captured with ONE RS
+4. Improved SDK stability and fixed several known issues
+
 ## V1.10.4
 
 **Released**: 2026-08-28
