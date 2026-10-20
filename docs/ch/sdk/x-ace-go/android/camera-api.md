@@ -125,6 +125,7 @@ interface CameraSystem
 | ActivateTime | `Long` | ✓ | 激活时间 |
 | ~~StorageData~~ | ~~`StorageData`~~ | ✗ | 已废弃，请使用 `StorageDataList` |
 | StorageDataList | `List<StorageData>` | ✗ | 存储介质状态列表（支持多存储位置） |
+| MainStorage | `StorageData.FileLocation` | ✗ | 当前主存储位置，即相机后续写入文件的位置（仅 X6 及之后支持；相机未上报时返回失败） |
 | MediaOffset / V2 / V3 | `String` | ✗ | 媒体偏移量（多版本） |
 | MediaOffsetV6 | `String` | ✗ | 媒体偏移量 V6 |
 | FirmwareRevision | `String` | ✗ | 固件版本号 |
@@ -159,6 +160,8 @@ interface CameraSystem
 | ~~`formatSdCard(callback)`~~ / ~~`formatSdCard()`~~ | 回调 / 协程 | 已废弃，请使用 `formatStorage`（等价于 `formatStorage(FileLocation.CAMERA)`） |
 | `formatStorage(fileLocation, callback)` / `formatStorage(fileLocation)` | 回调 / 协程 | 格式化指定存储位置，默认 `FileLocation.CAMERA` |
 | `setMainStorage(fileLocation, callback)` / `setMainStorage(fileLocation)` | 回调 / 协程 | 设置主存储位置（仅 X6 支持） |
+| `getMainStorage()` / `fetchMainStorage(callback)` / `fetchMainStorage()` | 同步 / 回调 / 协程 | 获取相机当前主存储位置（仅 X6 及之后支持） |
+| `getAiVoiceAssistantStatus()` / `fetchAiVoiceAssistantStatus(callback)` / `fetchAiVoiceAssistantStatus()` | 同步 / 回调 / 协程 | 查询 AI 语音助手状态（是否开启、运行状态、错误码、已绑定的唤醒设备蓝牙地址）。仅提供查询，不提供从 App 侧开关 |
 | `shutdown()` | 同步 | 关闭相机电源 |
 
 **状态监听**
@@ -214,7 +217,7 @@ interface CameraParam<T>
 | `hdrSwitch` | `Boolean` | 视频 HDR 开关 |
 | `aeb` | `Int` | 自动包围曝光（AEB） |
 | `rawType` | `RawType` | RAW 格式类型 |
-| `exposureProgram` | `ExposureProgram` | 曝光程序 |
+| `exposureProgram` | `ExposureMode` | 曝光模式（自动/手动两态）；部分机型的部分拍摄模式为 3A 专业模式，此时代理相机的普通/专业模式 |
 | `exposureISO` | `Int` | ISO |
 | `exposureShutterSpeed` | `Pair<Double, Double>` | 快门速度 |
 | `videoISOTopLimit` | `Int` | 视频 ISO 上限 |
@@ -231,7 +234,7 @@ interface CameraParam<T>
 | `filterMode` | `VideoGammaMode` | 滤镜模式 |
 | `accelerateFrequency` | `Int` | 加速频率（延时摄影） |
 | `recordDuration` | `Int` | 录制时长 |
-| `exposureIndividual` | `PanoExposureMode` | 独立曝光模式 |
+| `exposureIndividual` | `PanoExposureMode` | 独立曝光模式；仅部分机型与拍摄模式提供，相机本身不提供该设置时不会出现在参数列表中（如 X6） |
 | `livingBitrate` | `Int` | 直播码率 |
 | `burstCaptureParams` | `Pair<Int, Int>` | 连拍参数（张数, 间隔） |
 | `p3Switch` | `Boolean` | P3 色域开关 |
@@ -241,7 +244,6 @@ interface CameraParam<T>
 | `lapseTime` | `Double` | 间隔拍摄时间间隔 |
 | `livePhotoMode` | `Boolean` | 实况照片（Live Photo） |
 | `lensAccessory` | `LensAccessoryType` | 镜头配件类型 |
-| `iq3AMode` | `Iq3AMode` | 3A 专业模式（`NORMAL` ↔ `PRO`）；`exposureISO`/`exposureShutterSpeed`/`whiteBalance`/`videoISOTopLimit` 等参数在各模式下的可选值收窄由相机端声明驱动，SDK 不做自动模式切换 |
 
 **参数管理方法**
 
@@ -298,7 +300,7 @@ interface CameraPreview
 | `unregisterPostureListener(listener)` | 注销相机姿态更新监听器 |
 | `registerCameraStreamListener(listener)` | 注册预览流状态监听器 |
 | `unregisterCameraStreamListener(listener)` | 注销预览流状态监听器 |
-| `suspend startLive(params: CameraLiveParams): Result<Unit>` | 发起 RTMP 直播推流（需先切到直播模式并开启预览流） |
+| `suspend startLive(params: CameraLiveParams): Result<Unit>` | 发起 RTMP 直播推流（需先切到 `FunctionMode.VIDEO_LIVE` 并开启预览流；仅双镜头模式支持） |
 | `startLive(params: CameraLiveParams, callback: Callback<Unit>)` | 发起直播推流（callback 风味） |
 | `suspend stopLive(): Result<Unit>` | 停止直播推流 |
 | `stopLive(callback: Callback<Unit>)` | 停止直播推流（callback 风味） |
@@ -328,6 +330,7 @@ interface CameraStreamListener
 ```kotlin
 data class CameraLiveParams(
     val rtmpUrl: String,
+    val mode: LiveMode? = null,
     val width: Int,
     val height: Int,
     val fps: Int,
@@ -339,10 +342,21 @@ data class CameraLiveParams(
 | 属性 | 说明 |
 |------|------|
 | `rtmpUrl` | RTMP 推流地址 |
+| `mode` | 直播渲染模式（全景拼接 / 全景原始），均用于双镜头全景画面，与 `functionMode` 无关。不传时由 SDK 依据相机当前镜头状态自动判定（双镜头 → 全景拼接）。直播仅在双镜头模式下可用，单镜头与广角均不支持 |
 | `width` / `height` | 推流画面分辨率（像素） |
 | `fps` | 推流帧率 |
 | `bitrate` | 推流码率（单位 Mbps，底层内部转换为 bps） |
 | `netId` | 推流使用的网络 id，默认 -1（底层默认网络）。SDK 不管理网络，绑定指定网络（如蜂窝）时由调用方传入对应 network id |
+
+### LiveMode
+
+直播渲染模式，由调用方在 `CameraLiveParams.mode` 中显式指定。当前仅支持 `PANO_STITCH` 与 `PANO_CAPTURE`。
+
+| 枚举值 | 说明 |
+|--------|------|
+| `PANO_STITCH` | 全景拼接 |
+| `PANO_CAPTURE` | 全景原始画面 |
+| `PLANE` | 平面。当前不支持 |
 
 ### CameraLiveListener
 

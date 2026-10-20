@@ -476,7 +476,7 @@ interface PreviewPlayer : StreamPlayer, BasePlayer
 | `setFps(fps: Int)` | 设置预览帧率 |
 | `getPreviewWidth(): Int` / `getPreviewHeight(): Int` | 当前预览分辨率 |
 | `getFps(): Int` | 当前预览帧率 |
-| `setOffset(offsetData, stabOffset)` | 更新镜头偏移量和防抖偏移量 |
+| `setOffset(offsetData, stabOffset)` | 更新镜头标定与防抖偏移量。入参为相机原始标定值，SDK 内部按当前裁剪窗与 offsetType 重标定后写入渲染模型，调用方不要自行换算或加工 |
 | `setWindowCropInfo(cropInfo: WindowCropInfo)` | 设置窗口裁剪信息 |
 | `getWindowCropInfo(): WindowCropInfo?` | 获取当前窗口裁剪信息 |
 | `showPlayView()` / `hidePlayView()` | 显示/隐藏播放视图 |
@@ -624,6 +624,7 @@ interface PlayerViewListener
 | `onFail(exception: InstaException)` | exception：错误详情 | 发生错误 |
 | `onFirstFrameRendered()` | — | 第一帧渲染完成 |
 | `onReleaseCameraPipeline()` | — | 相机预览管线释放 |
+| `isPanoLive(): Boolean` | — | 查询当前直播画面是否为全景直播。由接入方按直播实际类型覆写，默认返回 false |
 
 ---
 
@@ -683,30 +684,14 @@ interface PlayerGestureListener
 
 ### StabType
 
-| 枚举值 | 说明 |
-|--------|------|
-| `AUTO` | 自动选择最优防抖算法 |
-| `PANORAMA` | 全景防抖 |
-| `CALIBRATE_HORIZON` | 水平校准防抖 |
-| `FOOTAGE_MOTION_SMOOTH` | 运动平滑防抖 |
-
----
-
-### StabilizerStabMode
-
-| 枚举值 | rawValue | 说明 |
-|--------|----------|------|
-| `Off` | -1 | 关闭防抖 |
-| `Still` | 0 | 固定防抖 |
-| `ZDirectional` | 1 | Z 轴方向防抖 |
-| `FullDirectional` | 2 | 全方向防抖 |
-| `FreeFootage` | 4 | 自由运镜防抖 |
-| `FlipEffect` | 22 | 翻转效果 |
-| `RelativeRefine` | 8 | 相对精细防抖 |
-| `AbsoluteRefine` | 9 | 绝对精细防抖 |
-| `BulletTime` | 5 | 子弹时间 |
-| `PanoFPV` | 23 | 全景 FPV |
-| `Immersion` | 24 | 沉浸模式 |
+| 枚举值 | nativeValue | 说明 |
+|--------|-------------|------|
+| `AUTO` | -99 | 自动选择最优防抖算法 |
+| `STAB_OFF` | -1 | 关闭防抖 |
+| `STAB_STILL` | 0 | 全防模式，视点锁定一个绝对方向，yaw/pitch/roll 均不改变 |
+| `STAB_Z_DIRECTIONAL` | 1 | Z 轴防抖，yaw 跟随、pitch/roll 锁定；仅用于全景素材 |
+| `STAB_FULL_DIRECTIONAL` | 2 | 水平校准防抖，yaw/pitch 跟随、roll 锁定；仅用于全景素材 |
+| `STAB_FREE_FOOTAGE` | 4 | 运动平滑防抖，yaw/pitch/roll 均随视点移动并做 flowstate 平滑；可用于非全景素材 |
 
 ---
 
@@ -777,38 +762,6 @@ interface PlayerGestureListener
 | `EnableAverageShell` | 平均保护壳 |
 | `EnableNDFilter` | ND 滤镜 |
 | `EnableDivingWaterPro` / `EnableDivingAirPro` | 潜水壳 Pro |
-
----
-
-### StabilizerParam
-
-```kotlin
-data class StabilizerParam(
-    val offset: String,
-    val preferredStabMode: StabilizerStabMode
-)
-```
-
-| 属性 | 说明 |
-|------|------|
-| `offset` | 镜头偏移量字符串，用于防抖计算 |
-| `preferredStabMode` | 首选防抖模式 |
-
----
-
-### RenderModelParam
-
-渲染行为综合配置参数。
-
-```kotlin
-data class RenderModelParam(
-    val imageLayout: ImageLayout = ImageLayout.Respective2Images,
-    val renderType: DisplayType = DisplayType.PlaneStitch,
-    val stabMode: StabilizerStabMode = StabilizerStabMode.Still,
-    val offset: String,
-    val colorFusion: Boolean
-)
-```
 
 ---
 

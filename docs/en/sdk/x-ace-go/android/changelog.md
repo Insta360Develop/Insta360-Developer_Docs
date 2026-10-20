@@ -2,6 +2,18 @@
 
 ## V2.x.x (current)
 
+### V2.2.6
+
+**Released**: 2026-10-20
+
+1. Support X6
+2. Fixed an issue where no URL was returned after shooting ended on X6
+3. Optimized exposure mode parameter types
+4. Renamed the stabilization enum throughout and added new levels
+5. Renamed the photo format enum
+6. Optimized the GPS serialization interface
+7. Improved SDK stability and fixed several known issues
+
 ### V2.1.5
 
 **Released**: 2026-08-28

@@ -22,7 +22,7 @@ The Camera SDK (`sdk-camera`) provides connection management, capture control, l
 6. [File Management](#6-file-management)
 7. [Firmware Upgrade](#7-firmware-upgrade)
 8. [Wi-Fi Settings](#8-wi-fi-settings)
-9. [Device Management](#9-device-management)
+9. [System Settings](#9-system-settings)
 
 ---
 
@@ -413,6 +413,12 @@ viewModelScope.launch {
 }
 ```
 
+Exposure-related parameters (`exposureProgram` / `exposureISO` / `exposureShutterSpeed` / `videoISOTopLimit`) are linked:
+
+- `exposureProgram` has two states: auto / manual. When you set ISO, shutter speed or the video ISO upper limit, the SDK derives the camera's actual exposure mode for the model and writes it as well, so the value of `exposureProgram` may change accordingly.
+- Parameters changed as a side effect do not trigger their own `addListener` callbacks; call `getValue()` to read them again.
+- Panoramic independent exposure is not entered or exited through `exposureProgram`; use the `exposureIndividual` switch instead. Switching `exposureProgram` to manual while panoramic independent exposure is on returns a failure — turn that switch off first.
+
 Observing parameter changes (useful when several clients stay in sync):
 
 ```kotlin
@@ -706,7 +712,7 @@ viewModelScope.launch {
 
 ### Live Streaming
 
-> Prerequisites: the camera is connected and you hold `CameraDevice.preview`. You must switch the capture mode to `FunctionMode.VIDEO_LIVE`, then start the preview stream and wait for it to open (`CameraStreamListener.onOpened`); otherwise `startLive` fails.
+> Prerequisites: the camera is connected and you hold `CameraDevice.preview`. You must switch the capture mode to `FunctionMode.VIDEO_LIVE`, then start the preview stream and wait for it to open (`CameraStreamListener.onOpened`); otherwise `startLive` fails. Live streaming is only available in dual-lens mode; single-lens and wide-angle are not supported.
 
 **1. Register the live streaming state listener**
 
@@ -736,6 +742,7 @@ viewModelScope.launch {
     device.preview.startLive(
         CameraLiveParams(
             rtmpUrl = "rtmp://your-server/live/stream-key",
+            mode    = LiveMode.PANO_STITCH,  // Rendering: panoramic stitched / panoramic raw; if omitted, decided from the camera's lens state
             width   = 1920,
             height  = 960,
             fps     = 30,
@@ -947,7 +954,7 @@ viewModelScope.launch {
 
 ---
 
-## 9. Device Management
+## 9. System Settings
 
 > Prerequisites: the camera is connected and you hold `CameraDevice.system`.
 
@@ -994,3 +1001,36 @@ viewModelScope.launch {
         .onFailure { /* Formatting failed */ }
 }
 ```
+
+### 9.5 Reading the Primary Storage Location
+
+The camera can switch where captured files are saved; only some models support internal storage.
+
+```kotlin
+viewModelScope.launch {
+    device.system.fetchMainStorage()
+        .onSuccess { location -> /* location is a FileLocation enum value */ }
+        .onFailure { /* Not supported on this model or the read failed; handle the fallback yourself */ }
+}
+```
+
+When the primary storage changes (including when it is switched directly on the camera), `StorageStateListener` receives a change notification.
+
+### 9.6 Querying the AI Voice Assistant Status
+
+Once the AI voice assistant is enabled on the camera, it occupies the Classic Bluetooth link for a long time. You can use this status to respond when the link is occupied.
+
+```kotlin
+viewModelScope.launch {
+    device.system.fetchAiVoiceAssistantStatus()
+        .onSuccess { status ->
+            status.enabled      // Whether the voice assistant is on — the indicator that the link is occupied
+            status.state        // Running state, for diagnostics only
+            status.errorCode    // Raw error code reported by the camera; non-zero does not mean a fault
+            status.boundBtMac   // Bluetooth address of the bound wake-up device; may be null
+        }
+        .onFailure { /* Distinguish by failure reason: camera not connected, model not supported, etc. */ }
+}
+```
+
+> Query only — the app cannot turn the voice assistant on or off.

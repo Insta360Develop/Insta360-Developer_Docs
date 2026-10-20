@@ -7,7 +7,7 @@
 | 工具 | 推荐版本                 |
 |------|----------------------|
 | Android Studio | Ladybug（2024.2.1）及以上 |
-| JDK | 11 及以上               |
+| JDK | 17 及以上               |
 | Gradle | 8.11.1 及以上           |
 
 ---
@@ -21,7 +21,7 @@
 | compileSdk | 36 |
 | minSdk | 28（Android 9） |
 | targetSdk | 36 |
-| JVM target | 11 |
+| JVM target | 17 |
 
 ---
 
@@ -48,15 +48,13 @@ dependencyResolutionManagement {
         maven {
             url = uri("https://androidsdk.insta360.com/repository/maven-public/")
             credentials {
-                username = "***" // 具体见官网下载的 SDK Demo
-                password = "***" // 具体见官网下载的 SDK Demo
+                username = "<Insta360 提供的账号>"
+                password = "<Insta360 提供的密码>"
             }
         }
     }
 }
 ```
-
-> Maven 仓库的 `username` 与 `password` 请查看从官网下载的 SDK Demo,或通过[开发者主页](https://www.insta360.com/cn/developer/home)申请获取。
 
 ```kotlin
 // build.gradle.kts（Project 级）
@@ -90,12 +88,12 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
     kotlin {
         compilerOptions {
-            jvmTarget.set(JvmTarget.JVM_11)
+            jvmTarget.set(JvmTarget.JVM_17)
         }
     }
 }
@@ -160,7 +158,7 @@ dependencies {
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
-        android:usesCleartextTraffic="true"
+        android:networkSecurityConfig="@xml/network_security_config"
         ... >
 
         <!-- USB 连接支持：在主 Activity 中声明，相机通过 USB 连接时系统会自动唤起 -->
@@ -183,8 +181,54 @@ dependencies {
 </manifest>
 ```
 
+> **`@xml/device_filter`**：无需自行创建，该资源由 `sdk-camera` 随 AAR 一并提供（相机 USB vendor/product id 白名单），Manifest 中直接引用即可。
+
 > **运行时权限**：以下权限属于危险权限，需在代码中动态申请，仅在 Manifest 中声明不会自动授予：
 > - 位置权限：`ACCESS_FINE_LOCATION`
 > - 蓝牙权限（Android 12+）：`BLUETOOTH_SCAN`、`BLUETOOTH_CONNECT`
 > - 存储权限：`READ_EXTERNAL_STORAGE` / `READ_MEDIA_*`
 > - 通知权限（Android 13+）：`POST_NOTIFICATIONS`
+
+---
+
+## 网络安全配置
+
+相机服务固定使用明文 HTTP，而 Android 9（API 28）起，targetSdk ≥ 28 的应用默认禁止明文流量。因此需要显式放行相机相关地址，同时让应用自身的流量仍然要求 HTTPS。
+
+SDK 在各连接方式下使用的明文端点：
+
+| 连接方式 | 端点 | 说明 |
+|----------|------|------|
+| BLE / Wi-Fi | `http://192.168.42.1` | 相机作为热点时的固定 IP |
+| Wi-Fi Aware | `http://aware.insta360.camera` | 占位域名。请求 URL 使用该域名，SDK 在发起请求时经自定义 DNS 将其解析为本次连接的相机地址，因此要放行的是域名本身，而不是某个固定 IP |
+| USB | `http://127.0.0.1` | 相机服务经 USB 隧道映射到本机回环地址 |
+
+在 `app/src/main/res/xml/network_security_config.xml` 新建：
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- 相机固定 IP：仅放行该地址的明文 HTTP，其余域名/IP 一律要求 HTTPS -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">192.168.42.1</domain>
+        <!-- Wi-Fi Aware 场景下  -->
+        <domain includeSubdomains="false">aware.insta360.camera</domain>
+        <!-- USB 场景下，SDK 把相机服务经 USB 隧道映射到本机回环地址，业务仍走明文 HTTP -->
+        <domain includeSubdomains="false">127.0.0.1</domain>
+    </domain-config>
+
+    <base-config cleartextTrafficPermitted="false" />
+</network-security-config>
+```
+
+并在 `<application>` 上引用该配置：
+
+```xml
+<application
+    android:networkSecurityConfig="@xml/network_security_config"
+    ... >
+```
+
+> 不要改用 `android:usesCleartextTraffic="true"`：那是全量放行明文，而这里按地址白名单放行；且在 API 24 及以上，只要设置了 `networkSecurityConfig`，该属性会被忽略。
+>
+> 三条 `<domain>` 缺一不可 —— 缺少对应条目时，该连接方式下的文件列表、上传下载与参数请求都会因明文流量被系统拦截而失败。

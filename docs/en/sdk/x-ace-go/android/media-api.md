@@ -476,7 +476,7 @@ interface PreviewPlayer : StreamPlayer, BasePlayer
 | `setFps(fps: Int)` | Set the preview frame rate |
 | `getPreviewWidth(): Int` / `getPreviewHeight(): Int` | Current preview resolution |
 | `getFps(): Int` | Current preview frame rate |
-| `setOffset(offsetData, stabOffset)` | Update the lens offset and stabilization offset |
+| `setOffset(offsetData, stabOffset)` | Update the lens calibration and stabilization offset. Pass the camera's raw calibration values; the SDK recalibrates them internally against the current crop window and offsetType before writing them to the render model. Do not convert or process them yourself |
 | `setWindowCropInfo(cropInfo: WindowCropInfo)` | Set the window crop information |
 | `getWindowCropInfo(): WindowCropInfo?` | Get the current window crop information |
 | `showPlayView()` / `hidePlayView()` | Show / hide the playback view |
@@ -624,6 +624,7 @@ interface PlayerViewListener
 | `onFail(exception: InstaException)` | exception: error details | An error occurred |
 | `onFirstFrameRendered()` | — | The first frame has been rendered |
 | `onReleaseCameraPipeline()` | — | The camera preview pipeline was released |
+| `isPanoLive(): Boolean` | — | Whether the current live stream is a panoramic live stream. Override it according to the actual live stream type; returns false by default |
 
 ---
 
@@ -683,30 +684,14 @@ Specifies which accessory is mounted on the camera so the matching lens distorti
 
 ### StabType
 
-| Value | Description |
-|-------|-------------|
-| `AUTO` | Automatically choose the best stabilization algorithm |
-| `PANORAMA` | Panoramic stabilization |
-| `CALIBRATE_HORIZON` | Horizon leveling stabilization |
-| `FOOTAGE_MOTION_SMOOTH` | Motion smoothing stabilization |
-
----
-
-### StabilizerStabMode
-
-| Value | rawValue | Description |
-|-------|----------|-------------|
-| `Off` | -1 | Stabilization off |
-| `Still` | 0 | Fixed stabilization |
-| `ZDirectional` | 1 | Z-axis stabilization |
-| `FullDirectional` | 2 | Omnidirectional stabilization |
-| `FreeFootage` | 4 | Free-motion stabilization |
-| `FlipEffect` | 22 | Flip effect |
-| `RelativeRefine` | 8 | Relative fine stabilization |
-| `AbsoluteRefine` | 9 | Absolute fine stabilization |
-| `BulletTime` | 5 | Bullet Time |
-| `PanoFPV` | 23 | Panoramic FPV |
-| `Immersion` | 24 | Immersive mode |
+| Value | nativeValue | Description |
+|-------|-------------|-------------|
+| `AUTO` | -99 | Automatically choose the best stabilization algorithm |
+| `STAB_OFF` | -1 | Stabilization off |
+| `STAB_STILL` | 0 | Full lock: the viewpoint is locked to an absolute direction; yaw, pitch and roll do not change |
+| `STAB_Z_DIRECTIONAL` | 1 | Z-axis stabilization: yaw follows, pitch and roll are locked; panoramic footage only |
+| `STAB_FULL_DIRECTIONAL` | 2 | Horizon leveling: yaw and pitch follow, roll is locked; panoramic footage only |
+| `STAB_FREE_FOOTAGE` | 4 | Motion smoothing: yaw, pitch and roll all follow the viewpoint with FlowState smoothing; also works for non-panoramic footage |
 
 ---
 
@@ -777,38 +762,6 @@ A bit-flag enum that specifies the lens guard or accessory type; values can be c
 | `EnableAverageShell` | Averaged protective shell |
 | `EnableNDFilter` | ND filter |
 | `EnableDivingWaterPro` / `EnableDivingAirPro` | Dive case Pro |
-
----
-
-### StabilizerParam
-
-```kotlin
-data class StabilizerParam(
-    val offset: String,
-    val preferredStabMode: StabilizerStabMode
-)
-```
-
-| Property | Description |
-|----------|-------------|
-| `offset` | Lens offset string used in stabilization calculations |
-| `preferredStabMode` | Preferred stabilization mode |
-
----
-
-### RenderModelParam
-
-Combined configuration for rendering behavior.
-
-```kotlin
-data class RenderModelParam(
-    val imageLayout: ImageLayout = ImageLayout.Respective2Images,
-    val renderType: DisplayType = DisplayType.PlaneStitch,
-    val stabMode: StabilizerStabMode = StabilizerStabMode.Still,
-    val offset: String,
-    val colorFusion: Boolean
-)
-```
 
 ---
 

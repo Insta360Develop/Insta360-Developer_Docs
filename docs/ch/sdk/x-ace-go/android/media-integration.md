@@ -274,7 +274,7 @@ playerView.setConstraint(
 playerView.setOffsetType(OffsetType.PROTECTOR_FASTEN)  // 卡扣式保护镜
 
 // 防抖类型
-playerView.setStabType(StabType.PANORAMA)
+playerView.setStabType(StabType.STAB_STILL)
 
 // 渲染效果
 playerView.setColorFusionEnabled(true)    // 消色差
@@ -336,7 +336,7 @@ previewView.setLifecycle(lifecycle)
 
 // 2. 配置预览参数
 val params = PreviewParams(
-    stabType         = StabType.PANORAMA,
+    stabType         = StabType.STAB_STILL,
     isColorFusion    = true,
     isGestureEnabled = true,
     renderModel      = RenderModel.AUTO
@@ -364,6 +364,8 @@ previewView.setListener(object : PlayerViewListener {
 })
 ```
 
+> 播放全景直播画面时需覆写 `isPanoLive()` 返回 true，播放器据此决定渲染方式；该方法默认返回 false。
+
 ---
 
 ### 5.2 同步相机流参数
@@ -386,6 +388,8 @@ previewView.setWindowCropInfo(
     MediaWindowCropInfo(srcWidth, srcHeight, dstWidth, dstHeight, offsetX, offsetY)
 )
 ```
+
+`setOffset` 的入参直接透传相机原始标定值即可，不要自行换算或加工——SDK 内部会按当前裁剪窗与 `offsetType` 重标定后写入渲染模型。裁剪窗变化时 SDK 会用最近一次入参按新裁剪窗重新标定，因此两个参数的到达顺序不影响结果。
 
 ---
 
@@ -417,7 +421,7 @@ val params = VideoExportParams(work).apply {
     fps        = 30                           // 输出帧率（-1 表示使用默认）
     bitrate    = 40_000_000                   // 输出码率 bps（-1 表示使用默认）
     exportMode = ExportMode.PANORAMA          // 投影模式
-    stabType   = StabType.PANORAMA            // 防抖模式
+    stabType   = StabType.STAB_STILL            // 防抖模式
     isDynamicStitch = true                    // 动态拼接
     isColorFusion   = true                    // 消色差
     offsetType = OffsetType.ORIGINAL          // 保护镜类型（无配件时为 ORIGINAL）

@@ -22,7 +22,7 @@ Camera SDK（`sdk-camera`）提供 Insta360 相机的连接管理、拍摄控制
 6. [文件管理](#6-文件管理)
 7. [固件升级](#7-固件升级)
 8. [Wi-Fi 设置](#8-wi-fi-设置)
-9. [设备管理](#9-设备管理)
+9. [系统设置](#9-系统设置)
 
 ---
 
@@ -413,6 +413,12 @@ viewModelScope.launch {
 }
 ```
 
+曝光相关参数（`exposureProgram` / `exposureISO` / `exposureShutterSpeed` / `videoISOTopLimit`）之间存在联动：
+
+- `exposureProgram` 为「自动 / 手动」两态。设置 ISO、快门速度或视频 ISO 上限时，SDK 会按机型推导并一并写入相机的真实曝光档位，`exposureProgram` 的取值可能随之变化。
+- 被联动的参数不会回调各自的 `addListener`，需要主动 `getValue()` 重新读取。
+- 全景独立曝光不经 `exposureProgram` 进出，改用 `exposureIndividual` 开关；处于全景独立曝光时把 `exposureProgram` 切到手动会返回失败，需先关闭该开关。
+
 参数变化监听（适用于多端同步场景）：
 
 ```kotlin
@@ -706,7 +712,7 @@ viewModelScope.launch {
 
 ### 直播推流
 
-> 前置条件：相机已连接并持有 `CameraDevice.preview`；必须先将拍摄模式切换为 `FunctionMode.VIDEO_LIVE`，再开启预览流并等待其打开（`CameraStreamListener.onOpened`），否则 `startLive` 返回失败。
+> 前置条件：相机已连接并持有 `CameraDevice.preview`；必须先将拍摄模式切换为 `FunctionMode.VIDEO_LIVE`，再开启预览流并等待其打开（`CameraStreamListener.onOpened`），否则 `startLive` 返回失败。直播仅在双镜头模式下可用，单镜头与广角均不支持。
 
 **1. 注册直播状态监听**
 
@@ -736,6 +742,7 @@ viewModelScope.launch {
     device.preview.startLive(
         CameraLiveParams(
             rtmpUrl = "rtmp://your-server/live/stream-key",
+            mode    = LiveMode.PANO_STITCH,  // 渲染方式：全景拼接 / 全景原始；不传时按相机镜头状态自动判定
             width   = 1920,
             height  = 960,
             fps     = 30,
@@ -947,7 +954,7 @@ viewModelScope.launch {
 
 ---
 
-## 9. 设备管理
+## 9. 系统设置
 
 > 前置条件：相机已连接，持有 `CameraDevice.system`。
 
@@ -994,3 +1001,36 @@ viewModelScope.launch {
         .onFailure { /* 格式化失败 */ }
 }
 ```
+
+### 9.5 读取主存储位置
+
+相机可切换拍摄文件的落盘位置，仅部分机型支持机内存储。
+
+```kotlin
+viewModelScope.launch {
+    device.system.fetchMainStorage()
+        .onSuccess { location -> /* location 为 FileLocation 枚举值 */ }
+        .onFailure { /* 机型不支持或读取失败，由调用方兜底 */ }
+}
+```
+
+主存储被改动时（含在相机上直接切换），`StorageStateListener` 会收到变更通知。
+
+### 9.6 查询 AI 语音助手状态
+
+相机侧开启 AI 语音助手后会长期占用经典蓝牙链路，接入方可在链路被占时做出处置。
+
+```kotlin
+viewModelScope.launch {
+    device.system.fetchAiVoiceAssistantStatus()
+        .onSuccess { status ->
+            status.enabled      // 语音助手是否开启，即「链路被占用」的判据
+            status.state        // 运行状态，仅用于诊断
+            status.errorCode    // 相机上报的错误码原始值，非 0 不代表故障
+            status.boundBtMac   // 已绑定的唤醒设备蓝牙地址，可能为 null
+        }
+        .onFailure { /* 按失败原因区分：相机未连接、机型不支持等 */ }
+}
+```
+
+> 仅提供查询，不提供从 App 侧开关语音助手的能力。

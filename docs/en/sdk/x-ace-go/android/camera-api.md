@@ -125,6 +125,7 @@ Writable items additionally provide a `setXxx(...)` method.
 | ActivateTime | `Long` | ✓ | Activation time |
 | ~~StorageData~~ | ~~`StorageData`~~ | ✗ | Deprecated; use `StorageDataList` |
 | StorageDataList | `List<StorageData>` | ✗ | State of each storage medium (supports multiple storage locations) |
+| MainStorage | `StorageData.FileLocation` | ✗ | Current primary storage location, i.e. where the camera writes subsequent files (X6 and later only; returns a failure if the camera does not report it) |
 | MediaOffset / V2 / V3 | `String` | ✗ | Media offset (multiple versions) |
 | MediaOffsetV6 | `String` | ✗ | Media offset V6 |
 | FirmwareRevision | `String` | ✗ | Firmware version |
@@ -159,6 +160,8 @@ Writable items additionally provide a `setXxx(...)` method.
 | ~~`formatSdCard(callback)`~~ / ~~`formatSdCard()`~~ | Callback / Coroutine | Deprecated; use `formatStorage` (equivalent to `formatStorage(FileLocation.CAMERA)`) |
 | `formatStorage(fileLocation, callback)` / `formatStorage(fileLocation)` | Callback / Coroutine | Format the given storage location; defaults to `FileLocation.CAMERA` |
 | `setMainStorage(fileLocation, callback)` / `setMainStorage(fileLocation)` | Callback / Coroutine | Set the primary storage location (X6 only) |
+| `getMainStorage()` / `fetchMainStorage(callback)` / `fetchMainStorage()` | Sync / Callback / Coroutine | Get the camera's current primary storage location (X6 and later only) |
+| `getAiVoiceAssistantStatus()` / `fetchAiVoiceAssistantStatus(callback)` / `fetchAiVoiceAssistantStatus()` | Sync / Callback / Coroutine | Query the AI voice assistant status (whether it is enabled, running state, error code, and the Bluetooth address of the bound wake-up device). Query only — it cannot be turned on or off from the app |
 | `shutdown()` | Synchronous | Power off the camera |
 
 **State monitoring**
@@ -214,7 +217,7 @@ All parameters are exposed as `CameraParam<T>` properties on `CameraCapture`:
 | `hdrSwitch` | `Boolean` | Video HDR toggle |
 | `aeb` | `Int` | Auto exposure bracketing (AEB) |
 | `rawType` | `RawType` | RAW format type |
-| `exposureProgram` | `ExposureProgram` | Exposure program |
+| `exposureProgram` | `ExposureMode` | Exposure mode (two states: auto / manual). On some models, certain shooting modes use 3A pro mode; in that case it maps to the camera's normal / pro mode |
 | `exposureISO` | `Int` | ISO |
 | `exposureShutterSpeed` | `Pair<Double, Double>` | Shutter speed |
 | `videoISOTopLimit` | `Int` | Video ISO upper limit |
@@ -231,7 +234,7 @@ All parameters are exposed as `CameraParam<T>` properties on `CameraCapture`:
 | `filterMode` | `VideoGammaMode` | Filter mode |
 | `accelerateFrequency` | `Int` | Speed-up factor (timelapse) |
 | `recordDuration` | `Int` | Recording duration |
-| `exposureIndividual` | `PanoExposureMode` | Independent exposure mode |
+| `exposureIndividual` | `PanoExposureMode` | Independent exposure mode. Only available on some models and shooting modes; it does not appear in the parameter list when the camera itself does not offer this setting (e.g. X6) |
 | `livingBitrate` | `Int` | Live streaming bitrate |
 | `burstCaptureParams` | `Pair<Int, Int>` | Burst parameters (shot count, interval) |
 | `p3Switch` | `Boolean` | Display P3 color gamut toggle |
@@ -241,7 +244,6 @@ All parameters are exposed as `CameraParam<T>` properties on `CameraCapture`:
 | `lapseTime` | `Double` | Interval shooting interval |
 | `livePhotoMode` | `Boolean` | Live Photo |
 | `lensAccessory` | `LensAccessoryType` | Lens accessory type |
-| `iq3AMode` | `Iq3AMode` | 3A pro mode (`NORMAL` ↔ `PRO`). Which values remain available for `exposureISO`, `exposureShutterSpeed`, `whiteBalance`, `videoISOTopLimit`, and similar parameters in each mode is driven by the camera's own declaration; the SDK does not switch modes automatically |
 
 **Parameter management**
 
@@ -298,7 +300,7 @@ interface CameraPreview
 | `unregisterPostureListener(listener)` | Unregister a camera posture update listener |
 | `registerCameraStreamListener(listener)` | Register a preview stream state listener |
 | `unregisterCameraStreamListener(listener)` | Unregister a preview stream state listener |
-| `suspend startLive(params: CameraLiveParams): Result<Unit>` | Start an RTMP live stream (switch to live mode and start the preview stream first) |
+| `suspend startLive(params: CameraLiveParams): Result<Unit>` | Start an RTMP live stream (switch to `FunctionMode.VIDEO_LIVE` and start the preview stream first; dual-lens mode only) |
 | `startLive(params: CameraLiveParams, callback: Callback<Unit>)` | Start a live stream (callback flavor) |
 | `suspend stopLive(): Result<Unit>` | Stop the live stream |
 | `stopLive(callback: Callback<Unit>)` | Stop the live stream (callback flavor) |
@@ -328,6 +330,7 @@ Live streaming parameters passed to `CameraPreview.startLive()`.
 ```kotlin
 data class CameraLiveParams(
     val rtmpUrl: String,
+    val mode: LiveMode? = null,
     val width: Int,
     val height: Int,
     val fps: Int,
@@ -339,10 +342,21 @@ data class CameraLiveParams(
 | Property | Description |
 |----------|-------------|
 | `rtmpUrl` | RTMP streaming URL |
+| `mode` | Live rendering mode (panoramic stitched / panoramic raw). Both are for dual-lens panoramic footage and are unrelated to `functionMode`. If omitted, the SDK decides based on the camera's current lens state (dual-lens → panoramic stitched). Live streaming is only available in dual-lens mode; single-lens and wide-angle are not supported |
 | `width` / `height` | Stream resolution (pixels) |
 | `fps` | Stream frame rate |
 | `bitrate` | Stream bitrate (in Mbps; converted to bps internally) |
 | `netId` | Network ID used for streaming; defaults to -1 (the underlying default network). The SDK does not manage networks — to bind a specific network such as cellular, pass the corresponding network ID |
+
+### LiveMode
+
+Live rendering mode, explicitly specified by the caller in `CameraLiveParams.mode`. Currently only `PANO_STITCH` and `PANO_CAPTURE` are supported.
+
+| Value | Description |
+|-------|-------------|
+| `PANO_STITCH` | Panoramic stitched |
+| `PANO_CAPTURE` | Panoramic raw footage |
+| `PLANE` | Flat. Not currently supported |
 
 ### CameraLiveListener
 
