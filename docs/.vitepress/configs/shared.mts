@@ -93,6 +93,7 @@ export const sdkGroups: SdkGroup[] = [
           { key: 'media-integration', ch: 'Media SDK 集成指南', en: 'Media SDK Integration' },
           { key: 'camera-api', ch: 'Camera SDK 接口文档', en: 'Camera SDK API' },
           { key: 'media-api', ch: 'Media SDK 接口文档', en: 'Media SDK API' },
+          { key: 'error-codes', ch: '错误码', en: 'Error Codes' },
           {
             key: 'legacy-api',
             ch: '接口文档（旧版 1.x.x）',
