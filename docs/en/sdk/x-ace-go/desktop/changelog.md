@@ -4,6 +4,14 @@ Desktop SDK release notes are listed per platform; each entry shows both the Cam
 
 ## Windows
 
+### Camera-V2.2.4, Media-V3.2.0
+
+**Released**: 2026-11-09
+
+1. Improved X6 file download speed
+2. Optimized the URL callback mechanism
+3. Improved SDK stability and fixed several known issues
+
 ### Camera-V2.1.8, Media-V3.2.0
 
 **Released**: 2026-11-02
@@ -30,6 +38,15 @@ Desktop SDK release notes are listed per platform; each entry shows both the Cam
 3. Added recording status notification callback
 
 ## Linux
+
+### Camera-V2.2.4, Media-V3.2.0
+
+**Released**: 2026-11-09
+
+1. Improved X6 file download speed
+2. Optimized the URL callback mechanism
+3. Fixed an issue where exported media displayed a black screen in headless environments
+4. Improved SDK stability and fixed several known issues
 
 ### Camera-V2.1.8, Media-V3.2.0
 
