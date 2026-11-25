@@ -2,6 +2,13 @@
 
 ## V2.x.x (current)
 
+### V2.3.2
+
+**Released**: 2026-11-24
+
+1. Added compatibility for 16 KB page alignment of SO files
+2. Improved SDK stability and fixed several known issues
+
 ### V2.2.6
 
 **Released**: 2026-10-20

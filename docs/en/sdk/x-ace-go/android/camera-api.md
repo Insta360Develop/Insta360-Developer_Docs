@@ -22,7 +22,7 @@ The Camera SDK (`sdk-camera`) provides connection management, capture control, l
 
 ### CameraDevice
 
-The core interface for a camera device and the entry point to every functional module.
+The core interface for a camera device and the unified access point for every feature entry.
 
 ```kotlin
 interface CameraDevice
@@ -34,7 +34,7 @@ interface CameraDevice
 CameraDevice.get(connectType: ConnectType): CameraDevice
 ```
 
-**Sub-modules**
+**Feature entries**
 
 | Property | Type | Description |
 |----------|------|-------------|
@@ -46,31 +46,39 @@ CameraDevice.get(connectType: ConnectType): CameraDevice
 
 **Connection methods**
 
+Unless noted otherwise, connection methods come in both a callback form and a coroutine (suspend) form. When `isBleOnly` is true, only a BLE connection is established; when it is false, the SDK continues to fetch Wi-Fi data after connecting.
+
 | Method | Style | Description |
 |--------|-------|-------------|
 | `isConnected()` | Synchronous | Whether the camera is connected |
-| `scan(timeoutMs, bleScanCallback)` | Synchronous | Scan for nearby Bluetooth devices |
-| `stopScan()` | Synchronous | Stop the Bluetooth scan |
+| `scan(timeoutMs, bleScanCallback)` | Synchronous | Scan for nearby camera devices (mainly for Bluetooth connections); `timeoutMs` is the scan timeout in milliseconds |
+| `stopScan()` | Synchronous | Stop scanning |
 | `bleWakeUp(cameraType, deviceName, listener)` | Synchronous | Wake the camera over Bluetooth |
-| `connect(connectHint, callback)` | Callback | Generic connect |
-| `connect(connectHint)` | Coroutine | Generic connect |
-| `connectBle(bleDeviceCore, callback)` | Callback | Bluetooth connect (SDK `BleDeviceCore`) |
-| `connectBle(bleDeviceCore)` | Coroutine | Bluetooth connect (SDK `BleDeviceCore`) |
-| `connectBle(kmpBleDevice, callback)` | Callback | Bluetooth connect (system `BluetoothDevice` / `CBPeripheral`) |
-| `connectBle(kmpBleDevice)` | Coroutine | Bluetooth connect (system `BluetoothDevice` / `CBPeripheral`) |
-| `connectWiFi(networkId, callback)` | Callback | Wi-Fi connect |
+| `connect(connectHint, callback)` | Callback | Generic connect; `connectHint` is, for example, a Wi-Fi SSID, a Bluetooth MAC address, or a connection configuration object |
+| `connect(connectHint, isBleOnly)` | Coroutine | Generic connect |
+| `connectBle(bleDeviceCore, isBleOnly, callback)` | Callback | Bluetooth connect (the SDK's `BleDeviceCore`) |
+| `connectBle(bleDeviceCore, isBleOnly)` | Coroutine | Bluetooth connect (the SDK's `BleDeviceCore`) |
+| `connectBle(kmpBleDevice, isBleOnly, callback)` | Callback | Bluetooth connect (system Bluetooth object; `BluetoothDevice` on Android) |
+| `connectBle(kmpBleDevice, isBleOnly)` | Coroutine | Bluetooth connect (system Bluetooth object) |
+| `connectWiFi(networkId, callback)` | Callback | Wi-Fi connect; `networkId` is the Wi-Fi network ID |
 | `connectWiFi(networkId)` | Coroutine | Wi-Fi connect |
+| `connectWiFiAware(networkHandle, peerIpv6, callback)` | Callback | Wi-Fi Aware (NAN) connect; the NAN handshake must first be completed on the app side |
+| `connectWiFiAware(networkHandle, peerIpv6)` | Coroutine | Wi-Fi Aware (NAN) connect; the NAN handshake must first be completed on the app side |
 | `connectUsb(callback)` | Callback | USB connect |
 | `connectUsb()` | Coroutine | USB connect |
-| `disconnect(callback)` / `suspend disconnect()` | Callback / Coroutine | Disconnect; returns `Result<Unit>` |
-| `getSupportCameraType()` | Synchronous | List the camera models supported by the current connection type |
-| `release()` | Synchronous | Release all resources held by the device object |
+| `disconnect(callback)` / `disconnect()` | Callback / Coroutine | Disconnect from the current camera |
+| `getSupportCameraType()` | Synchronous | List the camera models supported by the current connection type (`List<CameraType>`) |
+| `release()` | Synchronous | Release all resources held by the device object; the object can no longer be used afterwards |
+
+> Both parameters of `connectWiFiAware` come from the result of the app-side NAN handshake: `networkHandle` is taken from
+> `android.net.Network.getNetworkHandle`, and `peerIpv6` is taken from
+> `android.net.wifi.aware.WifiAwareNetworkInfo.getPeerIpv6Addr`.
 
 **Disconnection monitoring**
 
 | Method | Description |
 |--------|-------------|
-| `registerDisconnectListener(listener)` | Register a disconnection listener |
+| `registerDisconnectListener(listener)` | Register a disconnection listener (`DisconnectListener`) |
 | `unregisterDisconnectListener(listener)` | Unregister a disconnection listener |
 
 **Camera authorization**
@@ -80,8 +88,8 @@ After connecting, use the methods below to verify whether the current device has
 | Method | Style | Description |
 |--------|-------|-------------|
 | `checkAuthorization(callback)` / `checkAuthorization()` | Callback / Coroutine | Check authorization; returns `AuthorizationStatus` |
-| `cancelAuthorization(callback)` / `cancelAuthorization()` | Callback / Coroutine | Cancel the ongoing authorization check |
-| `registerAuthorizationListener(listener)` | Synchronous | Register an authorization result listener |
+| `cancelAuthorization(callback)` / `cancelAuthorization()` | Callback / Coroutine | Cancel the authorization check currently in progress |
+| `registerAuthorizationListener(listener)` | Synchronous | Register an authorization result listener (`AuthorizationListener`) |
 | `unregisterAuthorizationListener(listener)` | Synchronous | Unregister an authorization result listener |
 
 `AuthorizationStatus` values:
@@ -110,58 +118,73 @@ Every data item is available in three call styles:
 - `fetchXxx(callback)` — fetch from the camera (callback)
 - `suspend fetchXxx()` — fetch from the camera (coroutine)
 
-Writable items additionally provide a `setXxx(...)` method.
+Writable items additionally provide a `setXxx(...)` method. A few items are available only as `getXxx()`; see the "Style" column in the table below.
 
 **Data items**
 
-| Data item | Type | Writable | Description |
-|-----------|------|----------|-------------|
-| BatteryData | `BatteryData` | ✗ | Battery level and charging state |
-| ChargeBoxData | `ChargeBoxData` | ✗ | Charge case state |
-| Mute | `Boolean` | ✓ | Mute state |
-| SerialNumber | `String` | ✗ | Serial number |
-| Uuid | `String` | ✗ | UUID |
-| OriginOffset / V2 / V3 | `String` | ✗ | Original lens offset (multiple versions) |
-| ActivateTime | `Long` | ✓ | Activation time |
-| ~~StorageData~~ | ~~`StorageData`~~ | ✗ | Deprecated; use `StorageDataList` |
-| StorageDataList | `List<StorageData>` | ✗ | State of each storage medium (supports multiple storage locations) |
-| MainStorage | `StorageData.FileLocation` | ✗ | Current primary storage location, i.e. where the camera writes subsequent files (X6 and later only; returns a failure if the camera does not report it) |
-| MediaOffset / V2 / V3 | `String` | ✗ | Media offset (multiple versions) |
-| MediaOffsetV6 | `String` | ✗ | Media offset V6 |
-| FirmwareRevision | `String` | ✗ | Firmware version |
-| WifiData | `WiFiData` | ✗ | Wi-Fi information |
-| WifiChannelList | `WiFiChannel` | ✗ | Wi-Fi channel list |
-| CameraType | `CameraType` | ✗ | Camera model |
-| VideoEncodeType | `VideoEncode` | ✓ | Video encoding type |
-| IsSelfie | `Boolean` | ✗ | Whether selfie mode is active |
-| CameraLanguage | `LanguageType` | ✓ | Camera language |
-| AssistiveGridEnable | `Boolean` | ✓ | Assistive grid |
-| FreeFrameGridEnable | `Boolean` | ✓ | Free-aspect grid |
-| Sharpness | `Sharpness` | ✓ | Global sharpness |
-| MediaTime | `Long` | ✗ | Media time |
-| WindowCropInfo | `WindowCropInfo` | ✗ | Window crop information (cached) |
-| HalfWindowCropInfo | `WindowCropInfo` | ✗ | Half-window crop information (cached) |
-| OffsetState | `Int` | ✗ | Offset state (cached) |
-| OffsetDetectedType | `Int` | ✗ | Offset detection type (cached) |
-| RollingShutterTime | `Double` | ✗ | Rolling shutter time (seconds) |
+| Data item | Type | Style | Writable | Description |
+|-----------|------|-------|----------|-------------|
+| BatteryData | `BatteryData` | All three | ✗ | Battery level and charging state |
+| ChargeBoxData | `ChargeBoxData` | All three | ✗ | Charge case state |
+| Mute | `Boolean` | All three | ✓ | Mute state |
+| AiVoiceAssistantStatus | `AiVoiceAssistantStatus` | All three | ✗ | AI voice assistant status; see the note below |
+| SerialNumber | `String` | All three | ✗ | Serial number |
+| Uuid | `String` | All three | ✗ | UUID |
+| OriginOffset / V2 / V3 | `String` | All three | ✗ | Original lens offset (multiple versions) |
+| ActivateTime | `Long` | All three | ✓ | Activation time |
+| ~~StorageData~~ | ~~`StorageData`~~ | All three | ✗ | Deprecated; use `StorageDataList` |
+| StorageDataList | `List<StorageData>` | All three | ✗ | State of each storage medium (supports multiple storage locations) |
+| MainStorage | `StorageData.FileLocation` | All three | ✓ | Current primary storage location, i.e. where the camera writes subsequent files. Only available on models with internal storage (X6 and later); returns a failure if the camera has not reported this location |
+| MediaOffset / V2 / V3 / V6 | `String` | All three | ✗ | Media offset (multiple versions) |
+| SupportConfig | `ICameraConfig` | get only | ✗ | Configuration object for the connected camera |
+| FirmwareRevision | `String` | All three | ✗ | Firmware version |
+| WifiData | `WiFiData` | All three | ✗ | Wi-Fi data; `getWifiInfo` / `fetchWifiInfo` are aliases kept for the legacy naming |
+| WifiChannelList | `WiFiChannel` | All three | ✗ | Wi-Fi channel list |
+| CameraType | `CameraType` | All three | ✗ | Camera model |
+| VideoEncodeType | `VideoEncode` | All three | ✓ | Video encoding type |
+| IsSelfie | `Boolean` | All three | ✗ | Whether selfie mode is active |
+| WindowCropInfo | `WindowCropInfo` | get only | ✗ | Window crop information |
+| HalfWindowCropInfo | `WindowCropInfo` | get only | ✗ | Half-window crop information, used for offline stabilization |
+| SensorInfo | `Sensor` | get only | ✗ | Sensor information (protocol-layer sensor object) |
+| OffsetState | `Int` | get only | ✗ | Offset state |
+| OffsetDetectedType | `Int` | get only | ✗ | Offset detection type |
+| CameraLanguage | `LanguageType` | All three | ✓ | Camera language setting |
+| AssistiveGridEnable | `Boolean` | All three | ✓ | Assistive grid toggle |
+| FreeFrameGridEnable | `Boolean` | All three | ✓ | Free-aspect grid toggle |
+| Sharpness | `Sharpness` | All three | ✓ | Global sharpness |
+| MediaTime | `Long` | All three | ✗ | Media time |
+| RollingShutterTime | `Double` | All three | ✗ | Rolling shutter time |
+
+> **AI voice assistant**: `enabled` being true means the voice assistant is in use (the camera holds the Classic Bluetooth link for an extended period).
+> On failure, use `Result.exceptionOrNull()` to tell the causes apart: `AlreadyReleasedException` (the object has been released),
+> `CameraNotConnectedException` (not connected or not ready), `OptionValueNullException` (connected but the status has never been fetched),
+> `CameraNotSupportException` (the camera does not support this capability). `enabled == false` also occurs when the camera has not reported the toggle field,
+> so it cannot be taken as reliable confirmation that the assistant is not in use. The SDK only supports querying and provides no app-side toggle; `fetchAiVoiceAssistantStatus()`
+> returns a failure within 10 seconds if the camera does not respond.
 
 **Operations**
 
 | Method | Style | Description |
 |--------|-------|-------------|
-| `setLocalTime(localTime, callback)` / `setLocalTime(localTime)` | Callback / Coroutine | Set the local time |
-| `openCameraWiFi(channel, callback)` / `openCameraWiFi(channel)` | Callback / Coroutine | Turn Wi-Fi on |
-| `closeCameraWiFi(callback)` / `closeCameraWiFi()` | Callback / Coroutine | Turn Wi-Fi off |
-| `resetCameraWiFi(channel, callback)` / `resetCameraWiFi(channel)` | Callback / Coroutine | Restart Wi-Fi |
+| `setLocalTime(localTime, callback)` / `setLocalTime(localTime)` | Callback / Coroutine | Set the camera's local time; also sends GEOGRAPHIC_TIME_ZONE based on the phone's system time zone, which models such as X6 rely on exclusively to determine local time |
+| `setMute(enable, callback)` / `setMute(enable)` | Callback / Coroutine | Set the mute state |
+| `setActivateTime(activeTime, callback)` / `setActivateTime(activeTime)` | Callback / Coroutine | Set the camera's activation time |
+| `setVideoEncodeType(videoEncode, callback)` / `setVideoEncodeType(videoEncode)` | Callback / Coroutine | Set the video encoding type |
+| `setCameraLanguage(languageType, callback)` / `setCameraLanguage(languageType)` | Callback / Coroutine | Set the camera language |
+| `setAssistiveGridEnable(enable, callback)` / `setAssistiveGridEnable(enable)` | Callback / Coroutine | Set the assistive grid toggle |
+| `setFreeFrameGridEnable(enable, callback)` / `setFreeFrameGridEnable(enable)` | Callback / Coroutine | Set the free-aspect grid toggle |
+| `setSharpness(sharpness, callback)` / `setSharpness(sharpness)` | Callback / Coroutine | Set the global sharpness |
+| `openCameraWiFi(channel, callback)` / `openCameraWiFi(channel)` | Callback / Coroutine | Turn the camera's Wi-Fi on; `channel` defaults to 0 |
+| `closeCameraWiFi(callback)` / `closeCameraWiFi()` | Callback / Coroutine | Turn the camera's Wi-Fi off |
+| `setWifiMode(mode, countryCode, callback)` / `setWifiMode(mode, countryCode)` | Callback / Coroutine | Set the camera's Wi-Fi mode, for example switch to `WiFiData.Mode.Android_Aware` to enable Wi-Fi Aware connections; an empty `countryCode` leaves the country code unchanged |
+| `resetCameraWiFi(channel, callback)` / `resetCameraWiFi(channel)` | Callback / Coroutine | Restart the camera's Wi-Fi; `channel` defaults to 0 |
 | `setWiFiCountry(countryCode, callback)` / `setWiFiCountry(countryCode)` | Callback / Coroutine | Set the Wi-Fi country code |
-| `activeCamera(appId, secretKey, callback)` / `activeCamera(appId, secretKey)` | Callback / Coroutine | Activate the camera |
-| `calibrateGyro(callback)` / `calibrateGyro()` | Callback / Coroutine | Calibrate the gyroscope |
-| `setLockScreenState(state, callback)` / `setLockScreenState(state)` | Callback / Coroutine | Set the screen lock state |
-| ~~`formatSdCard(callback)`~~ / ~~`formatSdCard()`~~ | Callback / Coroutine | Deprecated; use `formatStorage` (equivalent to `formatStorage(FileLocation.CAMERA)`) |
+| `activeCamera(appId, secretKey, callback)` / `activeCamera(appId, secretKey)` | Callback / Coroutine | Activate the camera; `secretKey` is used for encryption and signing |
+| `calibrateGyro(callback)` / `calibrateGyro()` | Callback / Coroutine | Calibrate the camera's gyroscope |
+| `setLockScreenState(state, callback)` / `setLockScreenState(state)` | Callback / Coroutine | Set the camera's screen lock state |
+| ~~`formatSdCard(callback)`~~ / ~~`formatSdCard()`~~ | Callback / Coroutine | Deprecated; use `formatStorage` (its default location is `FileLocation.CAMERA`) |
 | `formatStorage(fileLocation, callback)` / `formatStorage(fileLocation)` | Callback / Coroutine | Format the given storage location; defaults to `FileLocation.CAMERA` |
 | `setMainStorage(fileLocation, callback)` / `setMainStorage(fileLocation)` | Callback / Coroutine | Set the primary storage location (X6 only) |
-| `getMainStorage()` / `fetchMainStorage(callback)` / `fetchMainStorage()` | Sync / Callback / Coroutine | Get the camera's current primary storage location (X6 and later only) |
-| `getAiVoiceAssistantStatus()` / `fetchAiVoiceAssistantStatus(callback)` / `fetchAiVoiceAssistantStatus()` | Sync / Callback / Coroutine | Query the AI voice assistant status (whether it is enabled, running state, error code, and the Bluetooth address of the bound wake-up device). Query only — it cannot be turned on or off from the app |
 | `shutdown()` | Synchronous | Power off the camera |
 
 **State monitoring**
@@ -197,11 +220,14 @@ interface CameraParam<T>
 |--------|-------------|
 | `suspend getValue(): Result<T>` | Read the currently cached value |
 | `suspend fetchValue(): Result<T>` | Read the latest value from the camera |
-| `suspend setValue(value: T): Result<Unit>` | Write a new value (notifies listeners automatically) |
-| `suspend getSupported(): Result<List<T>>` | Get the values available in the current mode |
+| `suspend setValue(value: T): Result<Unit>` | Write a new value; registered local listeners are notified after a successful write |
+| `suspend getSupported(): Result<List<T>>` | Get the values available for this parameter in the current camera mode |
 | `getName(): String` | Get the parameter's name identifier |
 | `addListener(listener: (T) -> Unit)` | Subscribe to value-change callbacks |
 | `removeListener(listener: (T) -> Unit)` | Unsubscribe from value-change callbacks |
+
+> Value-change callbacks fire only after a parameter is written successfully through this SDK. Fields rewritten as a side effect of another parameter do not notify their own listeners;
+> call `getValue()` to read them again (see the notes on `exposureISO` and related parameters).
 
 **Capture parameters**
 
@@ -210,20 +236,20 @@ All parameters are exposed as `CameraParam<T>` properties on `CameraCapture`:
 | Property | Type T | Description |
 |----------|--------|-------------|
 | `lensType` | `SensorMode` | Lens type (single lens, dual lens, and so on) |
-| `functionMode` | `FunctionMode` | Capture function mode (video, photo, timelapse, and so on) |
+| `functionMode` | `FunctionMode` | Capture function mode (normal video, normal photo, timelapse, and so on) |
 | `photoResolution` | `PhotoResolution` | Photo resolution |
 | `videoResolution` | `RecordResolution` | Video resolution |
 | `hdrPhotoMode` | `PhotoHdrType` | Photo HDR mode |
 | `hdrSwitch` | `Boolean` | Video HDR toggle |
 | `aeb` | `Int` | Auto exposure bracketing (AEB) |
 | `rawType` | `RawType` | RAW format type |
-| `exposureProgram` | `ExposureMode` | Exposure mode (two states: auto / manual). On some models, certain shooting modes use 3A pro mode; in that case it maps to the camera's normal / pro mode |
-| `exposureISO` | `Int` | ISO |
-| `exposureShutterSpeed` | `Pair<Double, Double>` | Shutter speed |
+| `exposureProgram` | `ExposureMode` | Exposure mode (two states: auto / manual); see the notes below |
+| `exposureISO` | `Int` | ISO; on some models, setting it also rewrites the exposure program |
+| `exposureShutterSpeed` | `Pair<Double, Double>` | Shutter speed; same linkage rules as `exposureISO` |
 | `videoISOTopLimit` | `Int` | Video ISO upper limit |
 | `exposureBias` | `Double` | Exposure compensation (EV) |
 | `whiteBalance` | `Int` | White balance |
-| `fovType` | `FovType` | Field-of-view type |
+| `fovType` | `FovType` | Field-of-view type (wide, linear, narrow, and so on) |
 | `flowStateLevel` | `FlowStateLevel` | Stabilization level |
 | `photographySelfTimer` | `Int` | Photo self-timer |
 | `splicingBaseEnable` | `Boolean` | Base stitching toggle |
@@ -232,26 +258,34 @@ All parameters are exposed as `CameraParam<T>` properties on `CameraCapture`:
 | `photoSizeId` | `PhotoSize` | Photo size / aspect ratio |
 | `colorMode` | `VideoGammaMode` | Color mode |
 | `filterMode` | `VideoGammaMode` | Filter mode |
-| `accelerateFrequency` | `Int` | Speed-up factor (timelapse) |
-| `recordDuration` | `Int` | Recording duration |
-| `exposureIndividual` | `PanoExposureMode` | Independent exposure mode. Only available on some models and shooting modes; it does not appear in the parameter list when the camera itself does not offer this setting (e.g. X6) |
+| `accelerateFrequency` | `Int` | Speed-up factor (typically for timelapse) |
+| `recordDuration` | `Int` | Recording duration (for example the segment length in loop recording) |
+| `exposureIndividual` | `PanoExposureMode` | Panoramic independent exposure toggle. On models whose exposure programs support panoramic independent exposure but that do not declare the native capability, this parameter is a virtual toggle: it only reads and writes the exposure program and does not write the native field |
 | `livingBitrate` | `Int` | Live streaming bitrate |
-| `burstCaptureParams` | `Pair<Int, Int>` | Burst parameters (shot count, interval) |
+| `burstCaptureParams` | `Pair<Int, Int>` | Burst parameters (shot count, time interval) |
 | `p3Switch` | `Boolean` | Display P3 color gamut toggle |
 | `iLogSwitch` | `Boolean` | i-Log color mode toggle |
 | `pureVideoEnhanceSwitch` | `Boolean` | PureVideo night enhancement toggle |
 | `doubleZoomEnable` | `Boolean` | 2x zoom toggle |
-| `lapseTime` | `Double` | Interval shooting interval |
-| `livePhotoMode` | `Boolean` | Live Photo |
-| `lensAccessory` | `LensAccessoryType` | Lens accessory type |
+| `lapseTime` | `Double` | Interval between shots in interval shooting |
+| `livePhotoMode` | `Boolean` | Live Photo mode |
+| `lensAccessory` | `LensAccessoryType` | Lens accessory type (for example a lens guard) |
+
+**Linked behavior of exposure parameters**
+
+- `exposureProgram` exposes only the two states auto / manual. It does not expose the camera's six internal exposure programs (auto, ISO priority, shutter priority, manual, full auto, panoramic independent exposure); the program is derived from the ISO / shutter linkage.
+  When the value crosses the auto/manual boundary, the exposure combination written to the camera depends on the model generation: some generations reset ISO / shutter / ISO upper limit to auto, others pass the values through unchanged. No write happens if the boundary is not crossed.
+- Panoramic independent exposure is not entered or exited through `exposureProgram`; use the `exposureIndividual` toggle. While panoramic independent exposure is active, setting `ExposureMode.MANUAL` returns a failure; turn off `exposureIndividual` first.
+- When the current shooting mode declares 3A pro mode (for example some X6 modes), the two states map directly to the camera's normal / pro mode: reads look only at that state, and switching sends only that state without touching ISO / shutter / the actual exposure program. Some modes support manual only, so the only available value is `ExposureMode.MANUAL`; in that case panoramic independent exposure does not block switching to manual.
+- On models with linkage enabled, `exposureISO` / `videoISOTopLimit` rewrite the camera's actual exposure program (to keep the combination written to the camera consistent), so the two-state value of `exposureProgram` may change as a result. There is no linkage in 3A pro mode. While in auto (normal mode), setting a manual value may have no effect; switch `exposureProgram` to `MANUAL` first.
 
 **Parameter management**
 
 | Method | Description |
 |--------|-------------|
 | `getSupportParam(): List<CameraParam<*>>` | List the parameters supported by the connected camera |
-| `suspend syncAllParams()` | Force a full parameter sync from the camera |
-| `suspend loadJson(): Result<Unit>` | Load the camera's parameter configuration JSON (call after connecting) |
+| `suspend syncAllParams()` | Force a sync of all parameter states from the camera and update the local cache |
+| `suspend loadJson(): Result<Unit>` | Load the camera's parameter configuration JSON (usually called after connecting, to initialize the list of supported parameters) |
 
 > `getSupportParamNames()` and `getAllParams()` are deprecated; use `getSupportParam()` instead.
 
@@ -259,16 +293,16 @@ All parameters are exposed as `CameraParam<T>` properties on `CameraCapture`:
 
 | Method | Description |
 |--------|-------------|
-| `suspend startCapture(gpsInfo: GpsInfo? = null)` | Start capturing, optionally writing GPS data into the media file |
+| `suspend startCapture(gpsInfo: GpsInfo? = null)` | Start capturing (video or photo depending on the current `functionMode`), optionally writing GPS data into the media file |
 | `suspend stopCapture(gpsInfo: GpsInfo? = null)` | Stop capturing, optionally writing GPS data into the media file |
 | `suspend setGpsInfo(gpsInfo: GpsInfo)` | Update GPS data while capturing |
-| `suspend isWorking(): Boolean` | Whether a capture is in progress |
+| `suspend isWorking(): Boolean` | Whether the camera is currently capturing |
 | `isPreRecording(): Boolean` | Whether pre-recording is active |
 | `cancelPreRecord()` | Cancel pre-recording |
 | `suspend getBurstTime(): Result<Unit>` | Get the burst time |
-| `suspend getRemaining(): Result<Int>` | Remaining recording time (seconds) or shot count for the current mode |
-| `getRemaining(functionMode): Result<Int>` | Remaining capacity for a given mode (cached) |
-| `suspend fetchRemaining(functionMode): Result<Int>` | Fetch the remaining capacity for a given mode from the camera |
+| `suspend getRemaining(): Result<Int>` | Remaining recording time (seconds) or remaining shot count for the current mode |
+| `getRemaining(functionMode): Result<Int>` | Remaining capacity for a given capture mode (from the local cache) |
+| `suspend fetchRemaining(functionMode): Result<Int>` | Fetch the latest remaining capacity for a given capture mode from the camera |
 | `registerCaptureStatusListener(listener)` | Register a capture status listener |
 | `unregisterCaptureStatusListener(listener)` | Unregister a capture status listener |
 
@@ -278,7 +312,7 @@ All parameters are exposed as `CameraParam<T>` properties on `CameraCapture`:
 
 ### CameraPreview
 
-Controls starting and stopping the camera's live preview stream, retrieves stream parameters, and monitors camera posture.
+Controls starting and stopping the camera's live preview stream, retrieves stream parameters, monitors camera posture, and handles live streaming.
 
 ```kotlin
 interface CameraPreview
@@ -286,28 +320,36 @@ interface CameraPreview
 
 | Method | Description |
 |--------|-------------|
-| `startStream()` | Start the preview stream (decoder configuration is synced automatically) |
+| `init(context: KMPContext)` | Initialize the preview service; call this before any other preview API (on Android, `KMPContext` is the `Application`) |
+| `startStream()` | Start the preview stream (the decoder configuration is synced automatically from the current video encoding configuration before starting) |
 | `stopStream()` | Stop the preview stream |
-| `requestStreamIframe()` | Request an immediate key frame to recover from a corrupted image |
-| `getPreviewParams(): Result<PreviewParams>` | Get a snapshot of the current preview stream parameters (for use by the media side) |
-| `getCurrentFunctionMode(): Result<FunctionMode>` | Get the function mode of the current preview session |
+| `requestStreamIframe()` | Request an immediate key frame (I-frame), used to initialize the decoder or quickly recover from a corrupted image |
+| `getPreviewParams(): Result<PreviewParams>` | Get a snapshot of the parameters that will be used to open the preview stream (computed from the function mode, recording state, and camera configuration) |
+| `getCurrentFunctionMode(): Result<FunctionMode>` | Get a snapshot of the function mode of the current preview session |
 | `getVideoBitrate(): Result<Int>` | Get the cached video bitrate (bps) |
 | `suspend fetchVideoBitrate(): Result<Int>` | Fetch the latest video bitrate from the camera |
-| `suspend setVideoBitrate(bitrate: Int): Result<Unit>` | Set the video bitrate |
-| `setStreamEncode(isH265: Boolean)` | Manually override the preview stream decoder configuration (rarely needed) |
-| `setPipeline(pipeline: KMPCameraPreviewPipeline?)` | Set the preview rendering pipeline |
-| `registerPostureListener(listener)` | Register a camera posture update listener |
+| `suspend setVideoBitrate(bitrate: Int): Result<Unit>` | Set the video bitrate (bps) |
+| `setStreamEncode(isH265: Boolean)` | Manually override the preview stream decoder configuration (rarely needed; `startStream()` syncs it automatically) |
+| `setPipeline(pipeline: KMPCameraPreviewPipeline?)` | Set the preview stream rendering pipeline; pass null to clear it |
+| `registerPostureListener(listener)` | Register a camera posture update listener (`CameraPostureUpdate`) |
 | `unregisterPostureListener(listener)` | Unregister a camera posture update listener |
-| `registerCameraStreamListener(listener)` | Register a preview stream state listener |
+| `registerCameraStreamListener(listener)` | Register a preview stream state listener (`CameraStreamListener`) |
 | `unregisterCameraStreamListener(listener)` | Unregister a preview stream state listener |
-| `suspend startLive(params: CameraLiveParams): Result<Unit>` | Start an RTMP live stream (switch to `FunctionMode.VIDEO_LIVE` and start the preview stream first; dual-lens mode only) |
-| `startLive(params: CameraLiveParams, callback: Callback<Unit>)` | Start a live stream (callback flavor) |
+| `suspend startLive(params): Result<Unit>` | Start an RTMP live stream; see the notes below |
+| `startLive(params, callback)` | Start a live stream (callback form) |
 | `suspend stopLive(): Result<Unit>` | Stop the live stream |
-| `stopLive(callback: Callback<Unit>)` | Stop the live stream (callback flavor) |
-| `registerCameraLiveListener(listener)` | Register a live streaming state listener |
+| `stopLive(callback)` | Stop the live stream (callback form) |
+| `registerCameraLiveListener(listener)` | Register a live streaming state listener (`CameraLiveListener`) |
 | `unregisterCameraLiveListener(listener)` | Unregister a live streaming state listener |
 
-> A successful return from `startLive` only means the streaming request was accepted. The actual streaming state is delivered asynchronously through `CameraLiveListener`.
+> `registerBatteryListener` / `unregisterBatteryListener` are the legacy names for the posture listener methods and are deprecated; use
+> `registerPostureListener` / `unregisterPostureListener` instead.
+
+> Preconditions for `startLive`: you must first set `functionMode` to `FunctionMode.VIDEO_LIVE` and call `startStream()`
+> so that the preview stream is open (OPENED, or PARAMS_CHANGED after a parameter change once opened); otherwise it returns a failure. A successful return only means the streaming request
+> was accepted; the actual streaming state is delivered asynchronously through `CameraLiveListener`. The panoramic stitched / panoramic raw / flat rendering mode is specified by
+> `CameraLiveParams.mode`; if omitted, the SDK decides based on the media offset reported by the camera (dual-lens → panoramic stitched,
+> single-lens / wide-angle → panoramic raw).
 
 ### CameraStreamListener
 
@@ -320,7 +362,7 @@ interface CameraStreamListener
 | `onOpening()` | The preview stream is opening |
 | `onOpened()` | The preview stream opened successfully |
 | `onIdle()` | The preview stream is closed |
-| `onParamsChanged(paramsUpdate: PreviewStreamParamsUpdate)` | Preview stream parameters changed (resolution, frame rate, crop information, and so on) |
+| `onParamsChanged(paramsUpdate: PreviewStreamParamsUpdate)` | Preview stream parameters (resolution, frame rate, crop information, and so on) changed |
 | `onStreamDataNotify(streamData: PreviewStreamFrame)` | A preview stream data frame was received (empty default implementation) |
 
 ### CameraLiveParams
@@ -335,14 +377,14 @@ data class CameraLiveParams(
     val height: Int,
     val fps: Int,
     val bitrate: Int,
-    val netId: Long = -1L
+    val netId: Long = -1L,
 )
 ```
 
 | Property | Description |
 |----------|-------------|
 | `rtmpUrl` | RTMP streaming URL |
-| `mode` | Live rendering mode (panoramic stitched / panoramic raw). Both are for dual-lens panoramic footage and are unrelated to `functionMode`. If omitted, the SDK decides based on the camera's current lens state (dual-lens → panoramic stitched). Live streaming is only available in dual-lens mode; single-lens and wide-angle are not supported |
+| `mode` | Live rendering mode (`LiveMode`), unrelated to `functionMode`. If omitted, the SDK decides based on the media offset reported by the camera (dual-lens → panoramic stitched, single-lens / wide-angle → panoramic raw) |
 | `width` / `height` | Stream resolution (pixels) |
 | `fps` | Stream frame rate |
 | `bitrate` | Stream bitrate (in Mbps; converted to bps internally) |
@@ -350,13 +392,13 @@ data class CameraLiveParams(
 
 ### LiveMode
 
-Live rendering mode, explicitly specified by the caller in `CameraLiveParams.mode`. Currently only `PANO_STITCH` and `PANO_CAPTURE` are supported.
+Live rendering mode enum, explicitly specified by the caller in `CameraLiveParams`.
 
 | Value | Description |
 |-------|-------------|
-| `PANO_STITCH` | Panoramic stitched |
-| `PANO_CAPTURE` | Panoramic raw footage |
-| `PLANE` | Flat. Not currently supported |
+| `PANO_STITCH` | Panoramic stitched live stream |
+| `PANO_CAPTURE` | Panoramic raw live stream (no stitching; spherical rendering) |
+| `PLANE` | Flat live stream |
 
 ### CameraLiveListener
 
@@ -371,7 +413,7 @@ interface CameraLiveListener
 | `onStarted()` | Streaming started successfully |
 | `onFps(fps: Int)` | Frame rate update; `fps` is the current real-time frame rate |
 | `onStopped()` | Streaming stopped normally |
-| `onFailed(errorCode: Int, message: String?)` | A streaming error occurred; `errorCode` is the underlying error code |
+| `onFailed(errorCode: Int, message: String?)` | A streaming error occurred; `errorCode` is the underlying error code, and `message` may be null |
 
 ### PreviewStreamFrame
 
@@ -385,8 +427,8 @@ data class PreviewStreamFrame(
 
 | Property | Description |
 |----------|-------------|
-| `data` | Raw frame bytes |
-| `timestamp` | Frame timestamp (usually needs converting to microseconds before feeding MediaCodec) |
+| `data` | Actual frame bytes |
+| `timestamp` | Frame timestamp; the unit is determined by the underlying layer (usually milliseconds, which must be converted to microseconds before feeding MediaCodec for decoding) |
 | `type` | Frame type; see the table below |
 
 ### PreviewStreamType
@@ -394,14 +436,14 @@ data class PreviewStreamFrame(
 | Value | Description |
 |-------|-------------|
 | `VIDEO` | Regular video frame |
-| `VIDEO_L` | Left-eye / left-side video frame |
-| `VIDEO_R` | Right-eye / right-side video frame |
+| `VIDEO_L` | Left-eye / left-side video frame (for panoramic or 3D video) |
+| `VIDEO_R` | Right-eye / right-side video frame (for panoramic or 3D video) |
 | `AUDIO` | Audio frame |
 | `GYRO` | Gyroscope / posture data frame |
-| `OTHER` | Other type |
-| `UNKNOWN` | Unknown type |
+| `OTHER` | Other type of data |
+| `UNKNOWN` | Unknown type of data |
 
-> `val isVideo: Boolean` — whether this is a video frame (VIDEO / VIDEO_L / VIDEO_R).
+> `val isVideo: Boolean` — whether this is a video frame (`VIDEO` / `VIDEO_L` / `VIDEO_R`).
 
 ### PreviewStreamParamsUpdate
 
@@ -418,11 +460,11 @@ data class PreviewStreamParamsUpdate(
 
 | Property | Description |
 |----------|-------------|
-| `windowCropInfo` | Window crop information, used for panoramic stitching |
-| `offsetData` | Lens offset / calibration parameters |
+| `windowCropInfo` | Camera window crop information, used for panoramic stitching |
+| `offsetData` | Camera preview offset data, including lens calibration parameters |
 | `stabOffset` | Stabilization offset string |
-| `previewWidth` / `previewHeight` | Current preview resolution (pixels) |
-| `previewFps` | Current preview frame rate |
+| `previewWidth` / `previewHeight` | Width and height of the current preview stream (pixels) |
+| `previewFps` | Frame rate of the current preview stream |
 
 ---
 
@@ -440,9 +482,9 @@ interface CameraFile
 
 | Method | Description |
 |--------|-------------|
-| `getEndpoint(): String` | Full file server URL (for example `http://192.168.42.1:80/`) |
-| `getHost(): String` | Host address |
-| `getProt(): Int` | Port number |
+| `getEndpoint(): String` | Full base URL of the file server (for example `http://192.168.42.1:80/`) |
+| `getHost(): String` | Host address (for example `192.168.42.1`) |
+| `getProt(): Int` | Port number (usually 80) |
 
 **File listing**
 
@@ -450,10 +492,12 @@ interface CameraFile
 |--------|-------|-------------|
 | `listMediaFiles(mediaFileType, includeRecording, callback)` | Callback | Get the complete file list as a list of URIs |
 | `listMediaFiles(mediaFileType, includeRecording)` | Coroutine | Same as above |
-| `listMediaFiles(mediaFileType, start, limit, includeRecording, callback)` | Callback | Paged listing; returns `Pair<List<String>, Int>` (page items, total count) |
+| `listMediaFiles(mediaFileType, start, limit, includeRecording, callback)` | Callback | Paged listing; returns `Pair<List<String>, Int>` (current page items, total file count) |
 | `listMediaFiles(mediaFileType, start, limit, includeRecording)` | Coroutine | Same as above |
-| `getFileInfoList(callback)` | Callback | Get the detailed file information list |
+| `getFileInfoList(callback)` | Callback | Get the information list of all files (`List<FileInfo>`) |
 | `getFileInfoList()` | Coroutine | Same as above |
+
+> `mediaFileType` defaults to `MediaFileType.VIDEO_AND_PHOTO`; `includeRecording` defaults to false, and when true the list includes the file currently being recorded.
 
 **File operations**
 
@@ -461,10 +505,13 @@ interface CameraFile
 |--------|-------|-------------|
 | `deleteMediaFiles(vararg uris, callback)` | Callback | Delete the given files |
 | `deleteMediaFiles(vararg uris)` | Coroutine | Delete the given files |
-| `downloadMediaFile(url, targetDir, progressCallback?)` | Coroutine | Download a media file; returns the local path |
+| `downloadMediaFile(url, targetDir, progressCallback?)` | Coroutine | Download a media file; returns the absolute path of the downloaded local file |
 | `downloadMediaFile(url, targetDir, progressCallback)` | Progress callback | Download a media file |
-| `downloadCameraLogFile(targetDir, progressCallback?)` | Coroutine | Download the camera log file; returns the local path |
+| `downloadCameraLogFile(targetDir, progressCallback?)` | Coroutine | Download the camera log file; returns the absolute path of the local log file |
 | `downloadCameraLogFile(targetDir, progressCallback)` | Progress callback | Download the camera log file |
+
+> In the coroutine form, the `progressCallback` parameters are `(bytes downloaded, total bytes)`; the callback form uses the `ProgressCallback` interface.
+> The coroutine overload of `downloadMediaFile` requires `targetDir` to be passed explicitly (the callback overload defaults to the SDK working directory); `targetDir` of `downloadCameraLogFile` defaults to the SDK log directory.
 
 ---
 
@@ -482,11 +529,16 @@ interface CameraFirmware
 | `upgradeFirmware(filePath, callback)` | Progress callback | Upgrade the firmware; progress ranges from 0.0 to 1.0 |
 | `upgradeFirmware(filePath, progress?)` | Coroutine | Upgrade the firmware with an optional progress callback |
 
+> The upgrade transfers the local firmware file to the camera and triggers the upgrade.
+
 ---
 
 ## 7. GPS Data Injection
 
 To embed GPS data in media files during capture, hold and manage your own location data source and pass the GPS data for the start and stop moments to `CameraCapture.startCapture(gpsInfo)` / `stopCapture(gpsInfo)`. To update it while recording, call `CameraCapture.setGpsInfo(gpsInfo)`.
+
+> The GPS data for the capture start is written together with the capture request; calling `setGpsInfo` while recording keeps updating the track record.
+> The track is aligned with media frames by `timestampMs`, so this timestamp must share the same time base as the camera clock.
 
 ### GpsInfo
 
@@ -504,8 +556,9 @@ data class GpsInfo(
 | `latitude` | Latitude (degrees) |
 | `longitude` | Longitude (degrees) |
 | `altitude` | Altitude (meters) |
-| `timestampMs` | Timestamp (milliseconds) |
-| `toByteArray()` | Serialize to a little-endian byte array |
+| `timestampMs` | Timestamp at which this GPS data was recorded (UTC milliseconds) |
+
+> The track record is aligned with media frames by `timestampMs`, so this timestamp must share the same time base as the camera clock.
 
 ---
 
@@ -517,7 +570,7 @@ Fires when the device loses its connection to the camera. Registered via `Camera
 
 | Callback | Parameters | Description |
 |----------|------------|-------------|
-| `onDisconnect(throwable: Throwable?)` | throwable: the disconnection cause (null for a normal disconnect) | The connection was closed |
+| `onDisconnect(throwable: Throwable?)` | throwable: the disconnection cause (null for a normal, intentional disconnect) | The connection was closed |
 
 ---
 
@@ -580,13 +633,13 @@ Registered via `CameraCapture.registerCaptureStatusListener()`.
 | Callback | Parameters | Description |
 |----------|------------|-------------|
 | `onCaptureStarting(functionMode)` | Current capture mode | Capture is about to start |
-| `onCaptureWorking(functionMode)` | Current capture mode | Capture has entered the working state |
+| `onCaptureWorking(functionMode)` | Current capture mode | Capture has officially started and is in the working state |
 | `onCaptureStopping(functionMode)` | Current capture mode | Capture is about to stop |
-| `onCaptureFinish(functionMode, filePaths)` | filePaths: paths of the generated files | Capture finished and files were generated |
-| `onCaptureError(functionMode, throwable)` | throwable: error cause | A capture error occurred |
-| `onCaptureTimeChanged(functionMode, captureTime)` | captureTime: elapsed recording time | Recording duration changed (video modes) |
-| `onCaptureCountChanged(functionMode, captureCount)` | captureCount: shots taken so far | Shot count changed (burst / interval) |
-| `onCaptureSubStatusChanged(functionMode, subStatus)` | subStatus: sub-status | Capture sub-status changed (for example HDR processing) |
+| `onCaptureFinish(functionMode, filePaths)` | filePaths: list of file paths / URIs generated on the camera | Capture finished and files were generated successfully |
+| `onCaptureError(functionMode, throwable)` | throwable: error cause | An error occurred during capture |
+| `onCaptureTimeChanged(functionMode, captureTime)` | captureTime: elapsed recording time (continuous capture modes such as video only) | Recording duration changed |
+| `onCaptureCountChanged(functionMode, captureCount)` | captureCount: shots taken so far (burst, interval shooting, and so on) | Shot count changed |
+| `onCaptureSubStatusChanged(functionMode, subStatus)` | subStatus: capture sub-status (for example panoramic stitching progress or HDR processing) | Capture sub-status changed |
 
 ---
 
@@ -606,27 +659,27 @@ Registered via `CameraDevice.registerAuthorizationListener()` to receive the res
 
 | Callback | Parameters | Description |
 |----------|------------|-------------|
-| `onAuthorizationResult(operationType, result)` | operationType: the operation that triggered this authorization; result: the authorization result | Fires after the user approves or rejects authorization on the camera |
+| `onAuthorizationResult(operationType, result)` | operationType: the operation type that triggered this authorization result; result: the result of the authorization operation | Fires after the user approves or rejects authorization on the camera |
 
 ---
 
 ## 9. Shared Data Types
 
-The types below are shared between the Camera and Media modules and are listed here for reference.
+The types below are shared by the Camera SDK and the Media SDK and are listed here for reference.
 
 ### KMPCameraPreviewPipeline
 
-Defined in `verticalCommon` and used on both the Camera and Media sides:
+Used in both the Camera SDK and the Media SDK:
 
-- Camera side: `CameraPreview.setPipeline(pipeline)` — inject the pipeline into the camera preview
-- Media side: `PreviewPlayer.getPipeline()` — get the current rendering pipeline
+- Camera SDK: `CameraPreview.setPipeline(pipeline)` — inject the pipeline into the camera preview
+- Media SDK: `PreviewPlayer.getPipeline()` — get the current rendering pipeline
 
-The pipeline object is created on the media side and passed to the camera side, where it serves as the transport channel for preview data.
+The pipeline object is created on the Media SDK side and passed to the camera side, where it serves as the transport channel for preview data.
 
 ---
 
 ### PreviewStreamParamsUpdate (Camera → Media)
 
-When the camera's preview stream parameters change, this object is delivered through `CameraStreamListener.onParamsChanged()`. On the media side, `PreviewPlayer.setOffset()` and `setWindowCropInfo()` are typically updated from the data it carries.
+When the camera's preview stream parameters change, this object is delivered through `CameraStreamListener.onParamsChanged()`. On the media side, `PreviewPlayer.setWindowCropInfo()` is typically updated from the crop window it carries; `offsetData` and `stabOffset` are maintained by the player itself based on the camera configuration, and the corresponding `setOffset()` is deprecated and now an empty implementation.
 
 See [§4 Live Preview – PreviewStreamParamsUpdate](#previewstreamparamsupdate).

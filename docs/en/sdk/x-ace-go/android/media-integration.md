@@ -274,7 +274,7 @@ playerView.setConstraint(
 playerView.setOffsetType(OffsetType.PROTECTOR_FASTEN)  // Snap-on lens guard
 
 // Stabilization type
-playerView.setStabType(StabType.STAB_STILL)
+playerView.setStabType(StabType.AUTO)  // AUTO picks the best stabilization algorithm automatically
 
 // Rendering effects
 playerView.setColorFusionEnabled(true)    // Chromatic aberration removal
@@ -323,7 +323,7 @@ playerView.destroy()
 
 ## 5. Camera Preview Integration
 
-`PreviewPlayer` (`InstaPreviewPlayerView`) renders the camera's live preview stream.
+`PreviewPlayer` (implemented on Android as `InstaCapturePlayerView`) renders the camera's live preview stream.
 
 > Prerequisite: the Camera SDK has connected to a camera and started the preview stream. The preview player establishes its data path with the camera preview through a `KMPCameraPreviewPipeline`, which must be configured on both the camera side and the media side to take effect. For the Camera SDK side, see [Camera SDK Integration Guide §5 Live Preview](../camera-integration/#_5-live-preview).
 
@@ -331,12 +331,12 @@ playerView.destroy()
 
 ```kotlin
 // 1. Create the preview player view
-val previewView = InstaPreviewPlayerView(context)  // or InstaCapturePlayerView
+val previewView = InstaCapturePlayerView(context)
 previewView.setLifecycle(lifecycle)
 
 // 2. Configure the preview parameters
 val params = PreviewParams(
-    stabType         = StabType.STAB_STILL,
+    stabType         = StabType.AUTO,
     isColorFusion    = true,
     isGestureEnabled = true,
     renderModel      = RenderModel.AUTO
@@ -365,8 +365,6 @@ previewView.setListener(object : PlayerViewListener {
 })
 ```
 
-> When playing a panoramic live stream, override `isPanoLive()` to return true; the player uses it to decide how to render. The method returns false by default.
-
 ---
 
 ### 5.2 Syncing Camera Stream Parameters
@@ -375,12 +373,8 @@ When the camera stream's resolution, offsets, or crop information change (observ
 
 ```kotlin
 // The calls below usually run inside the CameraStreamListener.onParamsChanged callback.
-// offsetData and stabOffset come from PreviewStreamParamsUpdate.
-
-previewView.setOffset(
-    OffsetData(offsetV1 = "...", offsetV2 = "...", offsetV3 = "..."),
-    stabOffset = "..."
-)
+// Lens calibration and stabilization offsets are maintained by the player from the camera configuration and recomputed when the crop window changes; there is no need to pass them separately.
+// MediaWindowCropInfo is an alias: import com.arashivision.sdk.media.core.model.WindowCropInfo as MediaWindowCropInfo
 
 previewView.setPreviewResolution(width = 1280, height = 960)
 previewView.setFps(fps = 30)
@@ -389,8 +383,6 @@ previewView.setWindowCropInfo(
     MediaWindowCropInfo(srcWidth, srcHeight, dstWidth, dstHeight, offsetX, offsetY)
 )
 ```
-
-Pass the camera's raw calibration values to `setOffset` as-is — don't convert or process them yourself. The SDK recalibrates them internally against the current crop window and `offsetType` before writing them to the render model. When the crop window changes, the SDK recalibrates the most recent input against the new crop window, so the order in which the two parameters arrive does not affect the result.
 
 ---
 
@@ -422,7 +414,7 @@ val params = VideoExportParams(work).apply {
     fps        = 30                           // Output frame rate (-1 uses the default)
     bitrate    = 40_000_000                   // Output bitrate in bps (-1 uses the default)
     exportMode = ExportMode.PANORAMA          // Projection mode
-    stabType   = StabType.STAB_STILL          // Stabilization mode
+    stabType   = StabType.AUTO                // Stabilization mode (AUTO picks automatically)
     isDynamicStitch = true                    // Dynamic stitching
     isColorFusion   = true                    // Chromatic aberration removal
     offsetType = OffsetType.ORIGINAL          // Lens guard type (ORIGINAL when no accessory)

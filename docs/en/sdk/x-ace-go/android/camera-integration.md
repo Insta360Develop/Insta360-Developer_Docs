@@ -28,7 +28,7 @@ The Camera SDK (`sdk-camera`) provides connection management, capture control, l
 
 ## 1. SDK Initialization
 
-Initialize the SDK in `Application.onCreate()`. Every other module depends on this step, so it must run first.
+Initialize the SDK in `Application.onCreate()`. All later features depend on this step, so it must run first.
 
 ```kotlin
 class MyApp : Application() {
@@ -299,17 +299,19 @@ val batteryListener = object : BatteryListener {
 
 ```kotlin
 val storageListener = object : StorageStateListener {
-    override fun onStorageStateChanged(storageData: StorageData) {
-        when (storageData.state) {
-            StorageData.State.PASS     -> { /* Normal: show used / total capacity */ }
-            StorageData.State.NO_CARD  -> { /* No SD card inserted */ }
-            StorageData.State.NO_SPACE -> { /* Storage is full */ }
-            StorageData.State.INVALID_FORMAT -> { /* Invalid format — suggest formatting */ }
-            StorageData.State.WP_CARD  -> { /* Write-protected */ }
-            StorageData.State.OTHER_ERROR -> { /* Other error */ }
+    override fun onStorageStateListChanged(storageDataList: List<StorageData>) {
+        storageDataList.forEach { storageData ->
+            when (storageData.state) {
+                StorageData.State.PASS     -> { /* Normal: show used / total capacity */ }
+                StorageData.State.NO_CARD  -> { /* No SD card inserted */ }
+                StorageData.State.NO_SPACE -> { /* Storage is full */ }
+                StorageData.State.INVALID_FORMAT -> { /* Invalid format — suggest formatting */ }
+                StorageData.State.WP_CARD  -> { /* Write-protected */ }
+                StorageData.State.OTHER_ERROR -> { /* Other error */ }
+            }
+            // Capacity in bytes
+            val usedBytes = storageData.total - storageData.free
         }
-        // Capacity in bytes; total/free may be 0 when no card is inserted
-        val usedBytes = storageData.total - storageData.free
     }
 }
 ```
@@ -405,19 +407,13 @@ viewModelScope.launch {
     val latestMode   = capture.functionMode.fetchValue().getOrNull()
 
     // Write a new value (synchronized to the camera)
-    capture.functionMode.setValue(FunctionMode.NORMAL_VIDEO)
-    capture.videoResolution.setValue(RecordResolution.RES_5_7K_30FPS)
+    capture.functionMode.setValue(FunctionMode.VIDEO_NORMAL)
+    capture.videoResolution.setValue(RecordResolution.RES_5760_2880_30)
     capture.hdrSwitch.setValue(true)
     capture.exposureISO.setValue(400)
     capture.whiteBalance.setValue(6500)
 }
 ```
-
-Exposure-related parameters (`exposureProgram` / `exposureISO` / `exposureShutterSpeed` / `videoISOTopLimit`) are linked:
-
-- `exposureProgram` has two states: auto / manual. When you set ISO, shutter speed or the video ISO upper limit, the SDK derives the camera's actual exposure mode for the model and writes it as well, so the value of `exposureProgram` may change accordingly.
-- Parameters changed as a side effect do not trigger their own `addListener` callbacks; call `getValue()` to read them again.
-- Panoramic independent exposure is not entered or exited through `exposureProgram`; use the `exposureIndividual` switch instead. Switching `exposureProgram` to manual while panoramic independent exposure is on returns a failure — turn that switch off first.
 
 Observing parameter changes (useful when several clients stay in sync):
 
@@ -519,7 +515,7 @@ device.capture.stopCapture(gpsInfo)
 
 ### Option 1: Use InstaCapturePlayerView (recommended)
 
-The SDK's `InstaCapturePlayerView` encapsulates decoding and rendering for a fast integration.
+`InstaCapturePlayerView` is provided by the Media SDK (`sdk-media`) and encapsulates decoding and rendering for a fast integration. For the player's own parameters and listeners, see [Media SDK Integration Guide §5 Camera Preview Integration](../media-integration/#_5-camera-preview-integration).
 
 **Integration flow**
 
@@ -545,18 +541,12 @@ val streamListener = object : CameraStreamListener {
     }
 
     override fun onParamsChanged(paramsUpdate: PreviewStreamParamsUpdate) {
-        // Sync the offsets (used for panoramic stitching)
-        paramsUpdate.offsetData?.let { offset ->
-            previewView.setOffset(
-                OffsetData(offset.offsetV1, offset.offsetV2, offset.offsetV3),
-                paramsUpdate.stabOffset.orEmpty()
-            )
-        }
         // Sync resolution and frame rate
         if (paramsUpdate.previewWidth > 0 && paramsUpdate.previewHeight > 0) {
             previewView.setPreviewResolution(paramsUpdate.previewWidth, paramsUpdate.previewHeight)
             previewView.setFps(paramsUpdate.previewFps)
         }
+        // MediaWindowCropInfo is an alias: import com.arashivision.sdk.media.core.model.WindowCropInfo as MediaWindowCropInfo
         // Sync the window crop information (used for panoramic stitching)
         paramsUpdate.windowCropInfo?.let { crop ->
             previewView.setWindowCropInfo(
@@ -712,7 +702,7 @@ viewModelScope.launch {
 
 ### Live Streaming
 
-> Prerequisites: the camera is connected and you hold `CameraDevice.preview`. You must switch the capture mode to `FunctionMode.VIDEO_LIVE`, then start the preview stream and wait for it to open (`CameraStreamListener.onOpened`); otherwise `startLive` fails. Live streaming is only available in dual-lens mode; single-lens and wide-angle are not supported.
+> Prerequisites: the camera is connected and you hold `CameraDevice.preview`. You must switch the capture mode to `FunctionMode.VIDEO_LIVE`, then start the preview stream and wait for it to open (`CameraStreamListener.onOpened`); otherwise `startLive` fails.
 
 **1. Register the live streaming state listener**
 
@@ -742,11 +732,11 @@ viewModelScope.launch {
     device.preview.startLive(
         CameraLiveParams(
             rtmpUrl = "rtmp://your-server/live/stream-key",
-            mode    = LiveMode.PANO_STITCH,  // Rendering: panoramic stitched / panoramic raw; if omitted, decided from the camera's lens state
             width   = 1920,
             height  = 960,
             fps     = 30,
             bitrate = 4,          // in Mbps
+            // mode is optional (LiveMode): if omitted, the SDK decides from the media offset reported by the camera (dual-lens → panoramic stitched, single-lens / wide-angle → panoramic raw)
             // netId defaults to -1; pass a network id to bind a specific network such as cellular
         )
     ).onSuccess {
@@ -1001,36 +991,3 @@ viewModelScope.launch {
         .onFailure { /* Formatting failed */ }
 }
 ```
-
-### 9.5 Reading the Primary Storage Location
-
-The camera can switch where captured files are saved; only some models support internal storage.
-
-```kotlin
-viewModelScope.launch {
-    device.system.fetchMainStorage()
-        .onSuccess { location -> /* location is a FileLocation enum value */ }
-        .onFailure { /* Not supported on this model or the read failed; handle the fallback yourself */ }
-}
-```
-
-When the primary storage changes (including when it is switched directly on the camera), `StorageStateListener` receives a change notification.
-
-### 9.6 Querying the AI Voice Assistant Status
-
-Once the AI voice assistant is enabled on the camera, it occupies the Classic Bluetooth link for a long time. You can use this status to respond when the link is occupied.
-
-```kotlin
-viewModelScope.launch {
-    device.system.fetchAiVoiceAssistantStatus()
-        .onSuccess { status ->
-            status.enabled      // Whether the voice assistant is on — the indicator that the link is occupied
-            status.state        // Running state, for diagnostics only
-            status.errorCode    // Raw error code reported by the camera; non-zero does not mean a fault
-            status.boundBtMac   // Bluetooth address of the bound wake-up device; may be null
-        }
-        .onFailure { /* Distinguish by failure reason: camera not connected, model not supported, etc. */ }
-}
-```
-
-> Query only — the app cannot turn the voice assistant on or off.

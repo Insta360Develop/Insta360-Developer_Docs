@@ -28,7 +28,7 @@ Camera SDK（`sdk-camera`）提供 Insta360 相机的连接管理、拍摄控制
 
 ## 1. SDK 初始化
 
-在 `Application.onCreate()` 中完成初始化，其他模块依赖此步骤，必须最先执行。
+在 `Application.onCreate()` 中完成初始化，后续各项功能依赖此步骤，必须最先执行。
 
 ```kotlin
 class MyApp : Application() {
@@ -299,17 +299,19 @@ val batteryListener = object : BatteryListener {
 
 ```kotlin
 val storageListener = object : StorageStateListener {
-    override fun onStorageStateChanged(storageData: StorageData) {
-        when (storageData.state) {
-            StorageData.State.PASS     -> { /* 正常：可显示已用/总容量 */ }
-            StorageData.State.NO_CARD  -> { /* 未插 SD 卡 */ }
-            StorageData.State.NO_SPACE -> { /* 空间已满 */ }
-            StorageData.State.INVALID_FORMAT -> { /* 格式异常，建议提示格式化 */ }
-            StorageData.State.WP_CARD  -> { /* 写保护 */ }
-            StorageData.State.OTHER_ERROR -> { /* 其他错误 */ }
+    override fun onStorageStateListChanged(storageDataList: List<StorageData>) {
+        storageDataList.forEach { storageData ->
+            when (storageData.state) {
+                StorageData.State.PASS     -> { /* 正常：可显示已用/总容量 */ }
+                StorageData.State.NO_CARD  -> { /* 未插 SD 卡 */ }
+                StorageData.State.NO_SPACE -> { /* 空间已满 */ }
+                StorageData.State.INVALID_FORMAT -> { /* 格式异常，建议提示格式化 */ }
+                StorageData.State.WP_CARD  -> { /* 写保护 */ }
+                StorageData.State.OTHER_ERROR -> { /* 其他错误 */ }
+            }
+            // 容量信息（字节）
+            val usedBytes = storageData.total - storageData.free
         }
-        // 容量信息（字节），total/free 可能为 0（未插卡时）
-        val usedBytes = storageData.total - storageData.free
     }
 }
 ```
@@ -405,19 +407,13 @@ viewModelScope.launch {
     val latestMode   = capture.functionMode.fetchValue().getOrNull()
 
     // 写入新值（会同步通知相机）
-    capture.functionMode.setValue(FunctionMode.NORMAL_VIDEO)
-    capture.videoResolution.setValue(RecordResolution.RES_5_7K_30FPS)
+    capture.functionMode.setValue(FunctionMode.VIDEO_NORMAL)
+    capture.videoResolution.setValue(RecordResolution.RES_5760_2880_30)
     capture.hdrSwitch.setValue(true)
     capture.exposureISO.setValue(400)
     capture.whiteBalance.setValue(6500)
 }
 ```
-
-曝光相关参数（`exposureProgram` / `exposureISO` / `exposureShutterSpeed` / `videoISOTopLimit`）之间存在联动：
-
-- `exposureProgram` 为「自动 / 手动」两态。设置 ISO、快门速度或视频 ISO 上限时，SDK 会按机型推导并一并写入相机的真实曝光档位，`exposureProgram` 的取值可能随之变化。
-- 被联动的参数不会回调各自的 `addListener`，需要主动 `getValue()` 重新读取。
-- 全景独立曝光不经 `exposureProgram` 进出，改用 `exposureIndividual` 开关；处于全景独立曝光时把 `exposureProgram` 切到手动会返回失败，需先关闭该开关。
 
 参数变化监听（适用于多端同步场景）：
 
@@ -519,7 +515,7 @@ device.capture.stopCapture(gpsInfo)
 
 ### 方式一：使用 InstaCapturePlayerView（推荐）
 
-SDK 提供的 `InstaCapturePlayerView` 封装了解码和渲染，可快速接入。
+`InstaCapturePlayerView` 由 Media SDK（`sdk-media`）提供，封装了解码和渲染，可快速接入。播放器自身的参数与监听器用法参见 [Media SDK 集成指南 §5 相机预览接入](../media-integration/#_5-相机预览接入)。
 
 **接入流程**
 
@@ -545,18 +541,12 @@ val streamListener = object : CameraStreamListener {
     }
 
     override fun onParamsChanged(paramsUpdate: PreviewStreamParamsUpdate) {
-        // 同步偏移量（用于全景拼接）
-        paramsUpdate.offsetData?.let { offset ->
-            previewView.setOffset(
-                OffsetData(offset.offsetV1, offset.offsetV2, offset.offsetV3),
-                paramsUpdate.stabOffset.orEmpty()
-            )
-        }
         // 同步分辨率和帧率
         if (paramsUpdate.previewWidth > 0 && paramsUpdate.previewHeight > 0) {
             previewView.setPreviewResolution(paramsUpdate.previewWidth, paramsUpdate.previewHeight)
             previewView.setFps(paramsUpdate.previewFps)
         }
+        // MediaWindowCropInfo 为 import com.arashivision.sdk.media.core.model.WindowCropInfo as MediaWindowCropInfo 的别名
         // 同步窗口裁剪信息（用于全景拼接）
         paramsUpdate.windowCropInfo?.let { crop ->
             previewView.setWindowCropInfo(
@@ -712,7 +702,7 @@ viewModelScope.launch {
 
 ### 直播推流
 
-> 前置条件：相机已连接并持有 `CameraDevice.preview`；必须先将拍摄模式切换为 `FunctionMode.VIDEO_LIVE`，再开启预览流并等待其打开（`CameraStreamListener.onOpened`），否则 `startLive` 返回失败。直播仅在双镜头模式下可用，单镜头与广角均不支持。
+> 前置条件：相机已连接并持有 `CameraDevice.preview`；必须先将拍摄模式切换为 `FunctionMode.VIDEO_LIVE`，再开启预览流并等待其打开（`CameraStreamListener.onOpened`），否则 `startLive` 返回失败。
 
 **1. 注册直播状态监听**
 
@@ -742,11 +732,11 @@ viewModelScope.launch {
     device.preview.startLive(
         CameraLiveParams(
             rtmpUrl = "rtmp://your-server/live/stream-key",
-            mode    = LiveMode.PANO_STITCH,  // 渲染方式：全景拼接 / 全景原始；不传时按相机镜头状态自动判定
             width   = 1920,
             height  = 960,
             fps     = 30,
             bitrate = 4,          // 单位 Mbps
+            // mode 可选（LiveMode）：不传时由 SDK 根据相机上报的媒体偏移量判定（双镜头→全景拼接，单镜头/广角→全景原始）
             // netId 默认 -1；绑定指定网络（如蜂窝）时传入对应 network id
         )
     ).onSuccess {
@@ -1001,36 +991,3 @@ viewModelScope.launch {
         .onFailure { /* 格式化失败 */ }
 }
 ```
-
-### 9.5 读取主存储位置
-
-相机可切换拍摄文件的落盘位置，仅部分机型支持机内存储。
-
-```kotlin
-viewModelScope.launch {
-    device.system.fetchMainStorage()
-        .onSuccess { location -> /* location 为 FileLocation 枚举值 */ }
-        .onFailure { /* 机型不支持或读取失败，由调用方兜底 */ }
-}
-```
-
-主存储被改动时（含在相机上直接切换），`StorageStateListener` 会收到变更通知。
-
-### 9.6 查询 AI 语音助手状态
-
-相机侧开启 AI 语音助手后会长期占用经典蓝牙链路，接入方可在链路被占时做出处置。
-
-```kotlin
-viewModelScope.launch {
-    device.system.fetchAiVoiceAssistantStatus()
-        .onSuccess { status ->
-            status.enabled      // 语音助手是否开启，即「链路被占用」的判据
-            status.state        // 运行状态，仅用于诊断
-            status.errorCode    // 相机上报的错误码原始值，非 0 不代表故障
-            status.boundBtMac   // 已绑定的唤醒设备蓝牙地址，可能为 null
-        }
-        .onFailure { /* 按失败原因区分：相机未连接、机型不支持等 */ }
-}
-```
-
-> 仅提供查询，不提供从 App 侧开关语音助手的能力。

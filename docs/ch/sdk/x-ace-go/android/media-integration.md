@@ -274,7 +274,7 @@ playerView.setConstraint(
 playerView.setOffsetType(OffsetType.PROTECTOR_FASTEN)  // 卡扣式保护镜
 
 // 防抖类型
-playerView.setStabType(StabType.STAB_STILL)
+playerView.setStabType(StabType.AUTO)  // AUTO 自动选择最优防抖算法
 
 // 渲染效果
 playerView.setColorFusionEnabled(true)    // 消色差
@@ -323,7 +323,7 @@ playerView.destroy()
 
 ## 5. 相机预览接入
 
-`PreviewPlayer`（`InstaPreviewPlayerView`）用于渲染相机实时预览流。
+`PreviewPlayer`（Android 侧实现为 `InstaCapturePlayerView`）用于渲染相机实时预览流。
 
 > 前置条件：Camera SDK 已连接相机并开启预览流。预览播放器通过 `KMPCameraPreviewPipeline` 与相机预览建立数据通路，Pipeline 需要在相机侧和媒体侧同时配置才能生效。Camera SDK 侧的接入方式参见 [Camera SDK 集成指南 §5 实时预览](../camera-integration/#_5-实时预览)。
 
@@ -331,12 +331,12 @@ playerView.destroy()
 
 ```kotlin
 // 1. 创建预览播放器视图
-val previewView = InstaPreviewPlayerView(context)  // 或 InstaCapturePlayerView
+val previewView = InstaCapturePlayerView(context)
 previewView.setLifecycle(lifecycle)
 
 // 2. 配置预览参数
 val params = PreviewParams(
-    stabType         = StabType.STAB_STILL,
+    stabType         = StabType.AUTO,
     isColorFusion    = true,
     isGestureEnabled = true,
     renderModel      = RenderModel.AUTO
@@ -364,8 +364,6 @@ previewView.setListener(object : PlayerViewListener {
 })
 ```
 
-> 播放全景直播画面时需覆写 `isPanoLive()` 返回 true，播放器据此决定渲染方式；该方法默认返回 false。
-
 ---
 
 ### 5.2 同步相机流参数
@@ -374,12 +372,8 @@ previewView.setListener(object : PlayerViewListener {
 
 ```kotlin
 // 以下调用通常在 CameraStreamListener.onParamsChanged 回调中触发
-// offsetData 和 stabOffset 来自 PreviewStreamParamsUpdate
-
-previewView.setOffset(
-    OffsetData(offsetV1 = "...", offsetV2 = "...", offsetV3 = "..."),
-    stabOffset = "..."
-)
+// 镜头标定与防抖偏移量由播放器按相机配置自行维护，裁剪窗变化时会一并重算，无需单独下发
+// MediaWindowCropInfo 为 import com.arashivision.sdk.media.core.model.WindowCropInfo as MediaWindowCropInfo 的别名
 
 previewView.setPreviewResolution(width = 1280, height = 960)
 previewView.setFps(fps = 30)
@@ -388,8 +382,6 @@ previewView.setWindowCropInfo(
     MediaWindowCropInfo(srcWidth, srcHeight, dstWidth, dstHeight, offsetX, offsetY)
 )
 ```
-
-`setOffset` 的入参直接透传相机原始标定值即可，不要自行换算或加工——SDK 内部会按当前裁剪窗与 `offsetType` 重标定后写入渲染模型。裁剪窗变化时 SDK 会用最近一次入参按新裁剪窗重新标定，因此两个参数的到达顺序不影响结果。
 
 ---
 
@@ -421,7 +413,7 @@ val params = VideoExportParams(work).apply {
     fps        = 30                           // 输出帧率（-1 表示使用默认）
     bitrate    = 40_000_000                   // 输出码率 bps（-1 表示使用默认）
     exportMode = ExportMode.PANORAMA          // 投影模式
-    stabType   = StabType.STAB_STILL            // 防抖模式
+    stabType   = StabType.AUTO                // 防抖模式（AUTO 自动选择）
     isDynamicStitch = true                    // 动态拼接
     isColorFusion   = true                    // 消色差
     offsetType = OffsetType.ORIGINAL          // 保护镜类型（无配件时为 ORIGINAL）

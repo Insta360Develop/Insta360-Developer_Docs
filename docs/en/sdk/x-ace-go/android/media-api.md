@@ -21,7 +21,7 @@ The Media SDK (`sdk-media`) provides playback, export, image stitching, and live
 
 ### WorkManager
 
-The singleton entry point for media file listings; implements `WorkOperations`.
+The singleton entry point for asset management; implements `WorkOperations`.
 
 ```kotlin
 object WorkManager : WorkOperations
@@ -35,14 +35,14 @@ interface WorkOperations
 
 | Method | Style | Description |
 |--------|-------|-------------|
-| `getAllCameraWorks(): Result<List<WorkWrapper>>` | Coroutine | List all media files on the camera |
-| `getAllLocalWorks(): List<WorkWrapper>` | Synchronous | List all local media files |
+| `getAllCameraWorks(): Result<List<WorkWrapper>>` | Coroutine | List all assets on the camera |
+| `getAllLocalWorks(): List<WorkWrapper>` | Synchronous | List all local assets |
 
 ---
 
 ### IWorkWrapper
 
-Wraps a single capture result, exposing its metadata, type checks, and file operations.
+The asset wrapper object. It wraps a single capture result (which may contain several files, such as the front and rear lens files of a panoramic video), exposing its metadata, type checks, thumbnail loading, and file operations.
 
 ```kotlin
 interface IWorkWrapper
@@ -52,30 +52,30 @@ interface IWorkWrapper
 
 | Property | Description |
 |----------|-------------|
-| `allUrls: Array<String>` | URLs of every related file (including LRV) |
-| `mainUrls: Array<String>` | URLs of the main (full-resolution) files |
-| `rawUrls: Array<String>` | URLs of the RAW files |
+| `allUrls: Array<String>` | URLs of every related file (including the main files, LRV, etc.) |
+| `mainUrls: Array<String>` | URLs of the main (full-resolution original) files |
+| `rawUrls: Array<String>` | URLs of the RAW-format files |
 | `lrvUrls: Array<String>` | URLs of the low-resolution preview (LRV) files |
 
 **Metadata**
 
 | Method | Parameters | Description |
 |--------|------------|-------------|
+| `loadExtraData(index)` | index defaults to 0 | Load extra metadata (gyroscope, exposure data, etc.); returns true on success |
 | `getCount()` | — | Number of file segments (greater than 1 for multi-segment video) |
+| `isExtraDataLoaded(index)` | index defaults to 0 | Whether the extra metadata of the given segment has been loaded |
+| `loadThumbnail(index)` | index defaults to 0 | Load the thumbnail; returns null on failure |
 | `getIdenticalKey(index)` | index defaults to 0 | Unique file identifier key |
-| `getWidth(index)` / `getHeight(index)` | index defaults to 0 | Resolution (pixels) |
+| `getWidth(index)` / `getHeight(index)` | index defaults to 0 | Width / height (pixels) |
 | `getBitrate(index)` | index defaults to 0 | Bitrate (bps) |
 | `getFps(index)` | index defaults to 0 | Frame rate |
 | `getCreationTime(index)` | index defaults to 0 | Creation time (millisecond timestamp) |
-| `getFirstFrameTimeOffset(index)` | index defaults to 0 | First-frame time offset (milliseconds) |
+| `getFirstFrameTimeOffset(index)` | index defaults to 0 | Time offset of the first frame (milliseconds) |
 | `getRollingShutterTime(index)` | index defaults to 0 | Rolling shutter time (seconds) |
 | `getDurationInMs(index)` | index defaults to 0 | Duration of one segment (milliseconds) |
-| `getTotalDurationInMs()` | — | Total duration of all segments (milliseconds) |
+| `getTotalDurationInMs()` | — | Total duration of all file segments (milliseconds) |
 | `getFileSize()` | — | Total file size (bytes) |
-| `getCameraType()` | — | Model name of the capturing camera |
-| `loadThumbnail(index)` | index defaults to 0 | Load the thumbnail; returns null on failure |
-| `loadExtraData(index)` | index defaults to 0 | Load extra metadata such as gyroscope and exposure data |
-| `isExtraDataLoaded(index)` | index defaults to 0 | Whether the extra metadata has been loaded |
+| `getCameraType()` | — | Model name of the camera that captured this file |
 | `getGyroData()` | — | Gyroscope data array; see [GyroData](#gyrodata) |
 | `getExposureData()` | — | Exposure data array; see [ExposureData](#exposuredata) |
 
@@ -101,21 +101,21 @@ interface IWorkWrapper
 | `isSelfieVideo()` | Selfie video |
 | `isSlowMotion()` | Slow motion |
 | `isPureVideo()` | PureVideo |
-| `supportHdrGenerate()` | Whether HDR compositing is supported |
 | `supportPureShotGenerate()` | Whether PureShot compositing is supported |
+| `supportHdrGenerate()` | Whether HDR compositing is supported |
 
 **File operations**
 
 | Method | Style | Description |
 |--------|-------|-------------|
-| `download(progressCallback?)` | Coroutine | Download to local storage; returns the local paths. `progressCallback` receives (total size, downloaded size) |
+| `download(progressCallback?)` | Coroutine | Download to local storage; returns the list of local file paths. `progressCallback` receives `(total size, downloaded size)` (bytes) |
 | `delete()` | Coroutine | Delete this file from the camera |
 
 ---
 
 ### WorkWrapper
 
-The abstract base class of `IWorkWrapper`; subclasses provide concrete implementations depending on the file's source (camera or local).
+The abstract base class of `IWorkWrapper`; implements `Comparable<WorkWrapper>`. Subclasses provide concrete implementations depending on the file's source (camera or local).
 
 ```kotlin
 abstract class WorkWrapper(
@@ -126,8 +126,8 @@ abstract class WorkWrapper(
 
 | Property | Description |
 |----------|-------------|
-| `httpPrefix` | The file server's HTTP prefix (used for camera files). Over Wi-Fi Aware this is a bare IPv6 address |
-| `downloadHttpPrefix` | The prefix the SDK should use when downloading assets. Over Wi-Fi Aware this is a placeholder hostname (resolved through dynamic DNS) so that OkHttp does not reject the zone-id syntax of a bare IPv6 address; for all other connection types it matches `httpPrefix` |
+| `httpPrefix` | The file server's HTTP prefix address (used for camera files). Intended for consumers that need to access the camera directly; over Wi-Fi Aware this is a bare IPv6 address |
+| `downloadHttpPrefix` | The prefix to use when downloading assets (used by the SDK's internal downloads). Over Wi-Fi Aware this is a placeholder hostname (resolved through dynamic DNS) so that OkHttp does not reject the zone-id syntax of a bare IPv6 address; for all other connection types it matches `httpPrefix` |
 
 ---
 
@@ -147,7 +147,7 @@ data class GyroData(
 |----------|-------------|
 | `accelerateX/Y/Z` | Three-axis acceleration (m/s²) |
 | `rotationX/Y/Z` | Three-axis angular velocity (rad/s) |
-| `timestamp` | Timestamp (milliseconds) |
+| `timestamp` | Data timestamp (milliseconds) |
 
 ---
 
@@ -162,7 +162,15 @@ data class ExposureData(val shutterSpeeds: Double, val timestamp: Long)
 | Property | Description |
 |----------|-------------|
 | `shutterSpeeds` | Shutter speed (seconds) |
-| `timestamp` | Timestamp (milliseconds) |
+| `timestamp` | Data timestamp (milliseconds) |
+
+**Parsing native data**
+
+```kotlin
+ExposureData.byteArray2ExposureData(bytes: ByteArray?, stride: Int): List<ExposureData>
+```
+
+Parses a native exposure data byte stream into a list of `ExposureData` using a fixed stride. Returns an empty list when `bytes` is null or shorter than one `stride`. `stride` is the number of bytes occupied by one frame of data.
 
 ---
 
@@ -184,40 +192,42 @@ interface Stitcher
 
 | Method | Description |
 |--------|-------------|
-| `stitchSeparatedFisheye(workWrapper, outputFilePath): Result<Unit>` | Detect the contents of the `WorkWrapper` automatically and stitch the fisheye images |
+| `stitchSeparatedFisheye(workWrapper, outputFilePath): Result<Unit>` | Automatically detect the parts of the asset that need stitching and stitch the fisheye images |
 | `stitchSeparatedFisheye(templateBlenderParams): Result<Unit>` | Stitch two fisheye images into a panorama |
 | `generateHDR(workWrapper, outputFilePath): Result<Unit>` | HDR compositing |
-| `generatePureShot(workWrapper, outputFilePath, algoFolderPath): Result<Unit>` | PureShot compositing |
+| `generatePureShot(workWrapper, outputFilePath, algoFolderPath): Result<Unit>` | PureShot compositing; `algoFolderPath` is the path of the directory containing the algorithm models |
+
+> All four methods above are coroutine suspend functions.
 
 ---
 
 ### TemplateBlenderParams
 
-Configuration for stitching fisheye images.
+Stitching parameters for two fisheye images.
 
 ```kotlin
 class TemplateBlenderParams(
-    val inputFilePath1: String,   // Path of the first fisheye image
-    val inputFilePath2: String,   // Path of the second fisheye image
-    val outputFilePath: String,   // Output file path
+    val inputFilePath1: String,   // Local file path of the first fisheye image
+    val inputFilePath2: String,   // Local file path of the second fisheye image
+    val outputFilePath: String,   // Output path of the stitched result
 )
 ```
 
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
-| `isColorAdjustment` | Boolean | false | Enable color correction |
+| `isColorAdjustment` | Boolean | false | Whether to enable color correction |
 | `blendAngle` | Float | 8f | Blend region angle (degrees) |
 | `mapSizeWidth` | Int | 200 | Mapping texture width |
 | `mapSizeHeight` | Int | 100 | Mapping texture height |
-| `fisheyeArrangement` | `FisheyeArrangement` | SEPERATED | Fisheye image arrangement |
+| `fisheyeArrangement` | `FisheyeArrangement` | SEPERATED | Arrangement of the two fisheye images |
 
 ### FisheyeArrangement
 
-| Value | Description |
-|-------|-------------|
-| `CONNECTED` | Horizontally joined (side by side) |
-| `VCONNECTED` | Vertically joined (stacked) |
-| `SEPERATED` | Separated (two independent images) |
+| Value | nativeValue | Description |
+|-------|-------------|-------------|
+| `CONNECTED` | 0 | Horizontally joined (side by side) |
+| `VCONNECTED` | 1 | Vertically joined (stacked) |
+| `SEPERATED` | 2 | Separated (two independent images) |
 
 ---
 
@@ -241,7 +251,7 @@ interface Exporter
 |--------|-------------|
 | `exportImage(imageExportParams, callback)` | Export an image |
 | `exportVideo(videoExportParams, callback)` | Export a video |
-| `exportVideoToImage(imageExportParams, callback)` | Extract frames from a video and export them as images |
+| `exportVideoToImage(imageExportParams, callback)` | Export specific frames of a video as images (frame timestamps are given via `ImageExportParams.timestampList`) |
 | `stopExport(exportId: Int)` | Cancel the given export task (`exportId` comes from `IExportCallback.onStart`) |
 
 ---
@@ -256,7 +266,7 @@ interface IExportCallback
 
 | Callback | Parameters | Description |
 |----------|------------|-------------|
-| `onStart(id: Int)` | id: task ID | Export started; use the ID to cancel the task |
+| `onStart(id: Int)` | id: task ID | Export task started; use the ID to cancel the task |
 | `onSuccess()` | — | Export succeeded |
 | `onFail(throwable: Throwable)` | throwable: failure cause | Export failed |
 | `onCancel()` | — | Export was cancelled |
@@ -266,7 +276,7 @@ interface IExportCallback
 
 ### ExportParams
 
-The base class for export parameters; every export parameter class extends it.
+The common export parameter configuration class; every export parameter class extends it.
 
 ```kotlin
 open class ExportParams(workWrapper: WorkWrapper) : MediaParams(workWrapper)
@@ -274,13 +284,13 @@ open class ExportParams(workWrapper: WorkWrapper) : MediaParams(workWrapper)
 
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
-| `exportMode` | `ExportMode` | PANORAMA | Export projection mode |
-| `targetPath` | String? | null | Output path; null uses the default path |
-| `isUseSoftwareDecoder` | Boolean | false | Use the software decoder |
-| `width` / `height` | Int | -1 | Output resolution (-1 means default) |
-| `isDenoise` | Boolean | false | Denoising toggle |
-| `distance` | Float | 0f | Viewing distance |
-| `fov` | Float | 0f | Field of view (degrees) |
+| `exportMode` | `ExportMode` | PANORAMA | Export mode (panorama / sphere) |
+| `targetPath` | String? | null | Output file path; null means the default path is used |
+| `isUseSoftwareDecoder` | Boolean | false | Whether to use the software decoder |
+| `width` / `height` | Int | -1 | Output resolution (-1 means the default is used) |
+| `isDenoise` | Boolean | false | Whether to enable denoising |
+| `distance` | Float | 0f | Viewing distance (0 means the default is used) |
+| `fov` | Float | 0f | Field of view (degrees; 0 means the default is used) |
 | `yaw` / `pitch` | Float | 0f | Yaw / pitch (degrees) |
 
 > For the properties inherited from `MediaParams`, see [§5 MediaParams](#mediaparams).
@@ -297,10 +307,10 @@ class VideoExportParams(workWrapper: WorkWrapper) : ExportParams(workWrapper)
 
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
-| `isUseSoftwareEncoder` | Boolean | false | Use the software encoder (hardware by default) |
+| `isUseSoftwareEncoder` | Boolean | false | Whether to use the software encoder (the hardware encoder is used by default) |
 | `bitrate` | Int | -1 | Target bitrate (bps; -1 uses the default) |
 | `fps` | Int | -1 | Target frame rate (-1 uses the default) |
-| `roll` | Float | 0f | Image roll angle (degrees) |
+| `roll` | Float | 0f | Video image roll angle (degrees) |
 
 ---
 
@@ -315,7 +325,7 @@ class ImageExportParams(workWrapper: WorkWrapper) : ExportParams(workWrapper)
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
 | `index` | Int | 0 | Index of the frame to export |
-| `timestampList` | `List<Double>` | empty | Timestamps (seconds) of the frames to export; takes precedence over `index` when not empty |
+| `timestampList` | `List<Double>` | emptyList | Timestamps (seconds) of the frames to export; when empty, `index` is used |
 
 ---
 
@@ -325,8 +335,8 @@ class ImageExportParams(workWrapper: WorkWrapper) : ExportParams(workWrapper)
 
 ```
 BasePlayer
-├── VideoPlayer  (: StreamPlayer, BasePlayer, LocalPlayer)
-├── ImagePlayer  (: BasePlayer, LocalPlayer)
+├── VideoPlayer   (: StreamPlayer, BasePlayer, LocalPlayer)
+├── ImagePlayer   (: BasePlayer, LocalPlayer)
 └── PreviewPlayer (: StreamPlayer, BasePlayer)
 
 StreamPlayer   — pause / resume / isPlaying
@@ -337,7 +347,7 @@ LocalPlayer    — marker interface indicating local file playback support
 
 ### BasePlayer
 
-The base interface for every player.
+The base interface for every player (video, image, and preview).
 
 ```kotlin
 interface BasePlayer
@@ -349,60 +359,52 @@ interface BasePlayer
 |--------|-------------|
 | `play()` | Start playback |
 | `isLoading(): Boolean` | Whether the player is loading |
-| `isPrepared(): Boolean` | Whether preparation has completed |
-| `destroy()` | Destroy the player and release all resources |
+| `isPrepared(): Boolean` | Whether preparation has completed (ready to play) |
+| `destroy()` | Destroy the player and release all related resources |
 
 **Gesture control**
 
 | Method | Description |
 |--------|-------------|
-| `setGestureEnabled(enabled)` | Master switch for gesture interaction |
-| `isGestureEnabled(): Boolean` | Get the master gesture switch state |
-| `setGestureHorizontalEnabled(enabled)` | Horizontal gestures (rotate the view left/right) |
-| `setGestureVerticalEnabled(enabled)` | Vertical gestures (rotate the view up/down) |
-| `setGestureZoomEnabled(enabled)` | Zoom gesture (pinch) |
-| `setGestureListener(listener: PlayerGestureListener?)` | Set the gesture event listener |
+| `setGestureEnabled(enabled)` / `isGestureEnabled(): Boolean` | Master switch for gesture interaction |
+| `setGestureHorizontalEnabled(enabled)` / `isGestureHorizontalEnabled(): Boolean` | Horizontal gestures (swipe left/right to rotate the view) |
+| `setGestureVerticalEnabled(enabled)` / `isGestureVerticalEnabled(): Boolean` | Vertical gestures (swipe up/down to rotate the view) |
+| `setGestureZoomEnabled(enabled)` / `isGestureZoomEnabled(): Boolean` | Zoom gesture (pinch to change the FOV) |
+| `setGestureListener(listener: PlayerGestureListener?)` | Set the gesture event listener; pass null to remove it |
 
 **Lens modes**
 
 | Method | Description |
 |--------|-------------|
-| `switchNormalMode()` | Normal (flat) mode |
-| `switchFisheyeMode()` | Fisheye mode |
-| `switchPerspectiveMode()` | Perspective mode |
+| `switchNormalMode()` | Switch to normal (flat) mode |
+| `switchFisheyeMode()` | Switch to fisheye mode |
+| `switchPerspectiveMode()` | Switch to perspective mode |
 
 **View control**
 
 | Method | Description |
 |--------|-------------|
-| `setConstraint(widthRatio, heightRatio, minFov, maxFov, defaultFov, minDistance, maxDistance, defaultDistance)` | Set the view constraints |
+| `setConstraint(widthRatio, heightRatio, minFov, maxFov, defaultFov, minDistance, maxDistance, defaultDistance)` | Set the view constraints: `widthRatio` / `heightRatio` are the aspect ratio components (-1 means unconstrained); the rest are the minimum / maximum / default FOV and viewing distance |
 | `getFov(): Float` | Current field of view (degrees) |
 | `getDistance(): Float` | Current viewing distance |
-| `getYaw(): Float` | Yaw (radians) |
-| `getPitch(): Float` | Pitch (radians) |
-| `getRoll(): Float` | Roll (radians) |
+| `getYaw(): Float` | Current yaw (radians) |
+| `getPitch(): Float` | Current pitch (radians) |
+| `getRoll(): Float` | Current roll (radians) |
 
 **Rendering settings**
 
 | Method | Description |
 |--------|-------------|
 | `setScreenRatio(ratioX, ratioY)` | Set the render view's aspect ratio |
-| `getScreenRatio(): Pair<Int, Int>` | Get the current aspect ratio |
-| `setStabType(type: StabType)` | Set the stabilization type |
-| `getStabType(): StabType` | Get the current stabilization type |
-| `setOffsetType(type: OffsetType)` | Set the lens offset type (lens guard, dive case, and other accessories) |
-| `getOffsetType(): OffsetType` | Get the current offset type |
-| `setColorFusionEnabled(enabled)` | Color fusion (chromatic aberration removal) toggle |
-| `isColorFusionEnabled(): Boolean` | Whether color fusion is enabled |
-| `setDynamicStitchEnabled(enabled)` | Dynamic stitching toggle |
-| `isDynamicStitchEnabled(): Boolean` | Whether dynamic stitching is enabled |
-| `setColorPlusEnabled(enabled)` | Color Plus toggle |
-| `isColorPlusEnabled(): Boolean` | Whether Color Plus is enabled |
-| `setColorPlusFilterIntensity(intensity)` | Color Plus intensity (0.0–1.0) |
-| `getColorPlusFilterIntensity(): Float` | Get the Color Plus intensity |
-| `setDePurpleFilterEnable(enabled)` | Purple-fringe removal filter toggle |
-| `getDePurpleFilterEnable(): Boolean` | Whether the purple-fringe removal filter is enabled |
-| `setListener(listener: PlayerViewListener?)` | Set the player view event listener |
+| `getScreenRatio(): Pair<Int, Int>` | Get the current aspect ratio (width, height) |
+| `setStabType(type: StabType)` / `getStabType(): StabType` | Stabilization type |
+| `setOffsetType(type: OffsetType)` / `getOffsetType(): OffsetType` | Lens offset type (lens guard, dive case, and other accessories) |
+| `setColorFusionEnabled(enabled)` / `isColorFusionEnabled(): Boolean` | Color fusion (chromatic aberration removal) |
+| `setDynamicStitchEnabled(enabled)` / `isDynamicStitchEnabled(): Boolean` | Dynamic stitching |
+| `setColorPlusEnabled(enabled)` / `isColorPlusEnabled(): Boolean` | Color Plus |
+| `setColorPlusFilterIntensity(intensity)` / `getColorPlusFilterIntensity(): Float` | Color Plus filter intensity (typically 0.0–1.0) |
+| `setDePurpleFilterEnable(enabled)` / `getDePurpleFilterEnable(): Boolean` | Purple-fringe removal filter |
+| `setListener(listener: PlayerViewListener?)` | Set the player view event listener; pass null to remove it |
 
 ---
 
@@ -424,7 +426,7 @@ interface StreamPlayer
 
 ### VideoPlayer
 
-The video player; extends `StreamPlayer` + `BasePlayer` with seeking, looping, and related capabilities.
+The video player; extends `StreamPlayer`, `BasePlayer`, and `LocalPlayer` with video playback control, seeking, looping, volume control, and the LRV low-resolution preview.
 
 ```kotlin
 interface VideoPlayer : StreamPlayer, BasePlayer, LocalPlayer
@@ -433,22 +435,20 @@ interface VideoPlayer : StreamPlayer, BasePlayer, LocalPlayer
 | Method | Description |
 |--------|-------------|
 | `prepare(params: VideoPlayerParams)` | Initialize and prepare the video player |
-| `setVideoStatusListener(listener: VideoStatusListener?)` | Set the playback status listener |
-| `seekTo(position: Long)` | Seek to the given position (milliseconds) |
-| `isSeeking(): Boolean` | Whether a seek is in progress |
+| `setVideoStatusListener(listener: VideoStatusListener?)` | Set the video playback status listener; pass null to remove it |
+| `seekTo(position: Long)` | Seek to the given playback position (milliseconds) |
+| `isSeeking(): Boolean` | Whether a seek operation is in progress |
 | `getCurrentPosition(): Long` | Current playback position (milliseconds) |
 | `getDuration(): Long` | Total video duration (milliseconds) |
-| `isLooping(): Boolean` | Whether looping is enabled |
-| `setLooping(isLooping: Boolean)` | Enable or disable looping |
-| `setVolume(volume: Float)` | Set the volume (0.0–1.0) |
-| `setLrvEnable(enabled: Boolean)` | Enable the low-resolution preview (LRV) |
-| `isLrvEnable(): Boolean` | Whether LRV is enabled |
+| `isLooping(): Boolean` / `setLooping(isLooping: Boolean)` | Whether looping is enabled |
+| `setVolume(volume: Float)` | Set the playback volume (0.0 mute – 1.0 maximum) |
+| `setLrvEnable(enabled: Boolean)` / `isLrvEnable(): Boolean` | Whether the low-resolution preview (LRV) is enabled |
 
 ---
 
 ### ImagePlayer
 
-The panoramic photo player.
+The image player; loads and displays panoramic photos.
 
 ```kotlin
 interface ImagePlayer : BasePlayer, LocalPlayer
@@ -460,9 +460,19 @@ interface ImagePlayer : BasePlayer, LocalPlayer
 
 ---
 
+### LocalPlayer
+
+Marker interface for local file players. It identifies the players that support local file playback (`VideoPlayer`, `ImagePlayer`) and distinguishes them from streaming players (`StreamPlayer`).
+
+```kotlin
+interface LocalPlayer
+```
+
+---
+
 ### PreviewPlayer
 
-The camera live preview player; extends `StreamPlayer` + `BasePlayer` with preview stream integration, resolution settings, and related capabilities.
+The camera preview player; extends `StreamPlayer` and `BasePlayer` with preview stream initialization, resolution / frame rate settings, crop information updates, and rotation detection.
 
 ```kotlin
 interface PreviewPlayer : StreamPlayer, BasePlayer
@@ -471,17 +481,17 @@ interface PreviewPlayer : StreamPlayer, BasePlayer
 | Method | Description |
 |--------|-------------|
 | `prepare(params: PreviewParams)` | Initialize and prepare the preview player |
-| `destroyRender()` | Destroy the renderer (required before restarting the player) |
-| `setPreviewResolution(width, height)` | Set the preview resolution |
+| `destroyRender()` | Destroy the renderer; must be called before restarting the player |
+| `setPreviewResolution(width, height)` | Set the preview resolution (pixels) |
 | `setFps(fps: Int)` | Set the preview frame rate |
-| `getPreviewWidth(): Int` / `getPreviewHeight(): Int` | Current preview resolution |
+| `getPreviewWidth(): Int` / `getPreviewHeight(): Int` | Current preview width and height (pixels) |
 | `getFps(): Int` | Current preview frame rate |
-| `setOffset(offsetData, stabOffset)` | Update the lens calibration and stabilization offset. Pass the camera's raw calibration values; the SDK recalibrates them internally against the current crop window and offsetType before writing them to the render model. Do not convert or process them yourself |
-| `setWindowCropInfo(cropInfo: WindowCropInfo)` | Set the window crop information |
-| `getWindowCropInfo(): WindowCropInfo?` | Get the current window crop information |
+| ~~`setOffset(offsetData, stabOffset)`~~ | Deprecated: empty implementation; calling it only logs a warning and has no effect. The player holds the authoritative calibration from `prepare()` onward |
+| `setWindowCropInfo(cropInfo: WindowCropInfo)` | Set the window crop information (used for panoramic stitching); when the crop window changes, the player recomputes the offset from the live calibration itself |
+| `getWindowCropInfo(): WindowCropInfo?` | Get the current window crop information; returns null if not set |
 | `showPlayView()` / `hidePlayView()` | Show / hide the playback view |
-| `getPipeline(): KMPCameraPreviewPipeline?` | Get the current rendering pipeline |
-| `updateRotate(rotateDegreeContent, rotateDegree, cameraPosture, cameraPostureCorrected)` | Update the image rotation |
+| `getPipeline(): KMPCameraPreviewPipeline?` | Get the current preview rendering pipeline; returns null if not initialized |
+| `updateRotate(rotateDegreeContent, rotateDegree, cameraPosture, cameraPostureCorrected)` | Update the preview image rotation (content rotation angle, overall rotation angle, camera posture value, corrected camera posture value) |
 | `redetectCameraRotation()` | Re-detect the camera's rotation |
 
 ---
@@ -490,7 +500,7 @@ interface PreviewPlayer : StreamPlayer, BasePlayer
 
 ### MediaParams
 
-The common base class for every media parameter class.
+The common base class for every media parameter class; holds the asset wrapper object from which subclasses derive their playback and export parameters.
 
 ```kotlin
 open class MediaParams(val workWrapper: WorkWrapper)
@@ -498,15 +508,16 @@ open class MediaParams(val workWrapper: WorkWrapper)
 
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
+| `workWrapper` | `WorkWrapper` | — | The associated asset wrapper object (constructor parameter) |
 | `isDePurpleFilterOn` | Boolean | false | Purple-fringe removal |
 | `isColorFusion` | Boolean | false | Chromatic aberration removal |
 | `isDynamicStitch` | Boolean | true | Dynamic stitching |
 | `stabType` | `StabType` | AUTO | Stabilization type |
-| `offsetType` | `OffsetType` | ORIGINAL | Lens offset type |
+| `offsetType` | `OffsetType` | ORIGINAL | Lens guard stitching (lens offset type) |
 | `screenRatio` | IntArray | [-1, -1] | Aspect ratio (-1 means unconstrained) |
-| `colorPlusEnable` | Boolean | false | Color Plus |
+| `colorPlusEnable` | Boolean | false | Color Plus toggle |
 | `colorPlusFilterIntensity` | Float | 1.0f | Color Plus intensity |
-| `urlForAction` | String | "" | The URL to play or export |
+| `urlForAction` | String | "" | The URL used for playback or export |
 
 ---
 
@@ -525,7 +536,7 @@ open class PlayerParams(workWrapper: WorkWrapper) : MediaParams(workWrapper)
 | `isGestureHorizontalEnabled` | Boolean | true | Horizontal gestures |
 | `isGestureVerticalEnabled` | Boolean | true | Vertical gestures |
 | `isGestureZoomEnabled` | Boolean | true | Zoom gesture |
-| `isWithSwitchingAnimation` | Boolean | false | Animate lens mode switches |
+| `isWithSwitchingAnimation` | Boolean | false | Whether to animate lens mode switches |
 
 ---
 
@@ -540,11 +551,11 @@ class VideoPlayerParams(workWrapper: WorkWrapper) : PlayerParams(workWrapper)
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
 | `loadingImageResId` | Int | -1 | Resource ID of the loading placeholder image (-1 means none) |
-| `loadingBackgroundColor` | Int | black | Loading background color (ARGB) |
-| `isAutoPlayAfterPrepared` | Boolean | true | Play automatically once prepared |
-| `isLooping` | Boolean | true | Loop playback |
-| `isLrvEnable` | Boolean | false | Enable the low-resolution preview (LRV) |
-| `isVideoHwaccelEnabled` | Boolean | true | Enable hardware-accelerated video decoding |
+| `loadingBackgroundColor` | Int | black | Loading background color (ARGB integer) |
+| `isAutoPlayAfterPrepared` | Boolean | true | Whether to play automatically once prepared |
+| `isLooping` | Boolean | true | Whether to loop playback |
+| `isLrvEnable` | Boolean | false | Whether to enable the low-resolution preview (LRV) |
+| `isVideoHwaccelEnabled` | Boolean | true | Whether to enable hardware-accelerated video decoding |
 
 ---
 
@@ -564,28 +575,45 @@ class ImagePlayerParams(workWrapper: WorkWrapper) : PlayerParams(workWrapper)
 
 ### PreviewParams
 
-Camera preview player parameters.
+Camera preview parameter configuration.
 
 ```kotlin
-data class PreviewParams(...)
+data class PreviewParams(
+    var width: Int = -1,
+    var height: Int = -1,
+    var fps: Int = -1,
+    var screenRatio: Pair<Int, Int> = -1 to -1,
+    var stabType: StabType? = null,
+    var isGestureEnabled: Boolean = true,
+    var isCopyVideoHwaccel: Boolean = true,
+    var isVideoHwaccelEnabled: Boolean = true,
+    var isColorFusion: Boolean = true,
+    var stabCacheFrameNum: Int = -1,
+    var isOnlyStitchSurfaceRender: Boolean = false,
+    var renderModel: RenderModel? = null,
+    var isRenderAtOnce: Boolean = false,
+    var cameraRenderSurface: KMPSurface? = null,
+    var cameraRenderSurfaceWidth: Int = -1,
+    var cameraRenderSurfaceHeight: Int = -1,
+)
 ```
 
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `width` / `height` | Int | -1 | Preview resolution (-1 uses the default) |
-| `fps` | Int | -1 | Preview frame rate |
-| `screenRatio` | `Pair<Int, Int>` | -1 to -1 | Render view aspect ratio |
-| `stabType` | `StabType?` | null | Stabilization type |
-| `isGestureEnabled` | Boolean | true | Gesture interaction toggle |
-| `isCopyVideoHwaccel` | Boolean | true | Hardware-accelerated frame copying |
-| `isVideoHwaccelEnabled` | Boolean | true | Enable hardware-accelerated video decoding |
-| `isColorFusion` | Boolean | true | Color fusion (chromatic aberration removal) |
-| `stabCacheFrameNum` | Int | -1 | Number of frames cached for stabilization |
-| `isOnlyStitchSurfaceRender` | Boolean | false | Render only to the specified Surface |
-| `renderModel` | `RenderModel?` | null | Rendering mode |
-| `isRenderAtOnce` | Boolean | false | Start rendering immediately (do not wait for the first frame) |
-| `cameraRenderSurface` | `KMPSurface?` | null | The target render Surface |
-| `cameraRenderSurfaceWidth` / `Height` | Int | -1 | Dimensions of that Surface |
+| Property | Default | Description |
+|----------|---------|-------------|
+| `width` / `height` | -1 | Preview resolution (-1 means the default is used) |
+| `fps` | -1 | Preview frame rate (-1 means the default is used) |
+| `screenRatio` | -1 to -1 | Render view aspect ratio (-1 to -1 means unconstrained) |
+| `stabType` | null | Stabilization type (null means the default is used) |
+| `isGestureEnabled` | true | Whether to enable gesture interaction |
+| `isCopyVideoHwaccel` | true | Whether to use hardware acceleration to copy video frames |
+| `isVideoHwaccelEnabled` | true | Whether to enable hardware-accelerated video decoding |
+| `isColorFusion` | true | Whether to enable color fusion (chromatic aberration removal) |
+| `stabCacheFrameNum` | -1 | Number of frames cached for stabilization (-1 means the default is used) |
+| `isOnlyStitchSurfaceRender` | false | Whether to render only to the specified Surface without displaying on the View |
+| `renderModel` | null | Rendering mode (null means the default is used) |
+| `isRenderAtOnce` | false | Whether to start rendering immediately (without waiting for the first frame) |
+| `cameraRenderSurface` | null | The target render Surface (null means render to the default View) |
+| `cameraRenderSurfaceWidth` / `cameraRenderSurfaceHeight` | -1 | Width and height of the render Surface (pixels; -1 means the default is used) |
 
 ---
 
@@ -601,11 +629,11 @@ interface VideoStatusListener
 
 | Callback | Parameters | Description |
 |----------|------------|-------------|
-| `onProgressChanged(position, length)` | milliseconds | Playback progress changed |
-| `onPlayStateChanged(isPlaying)` | — | Play / pause state changed |
+| `onProgressChanged(position, length)` | Current playback position / total video duration (milliseconds) | Playback progress changed |
+| `onPlayStateChanged(isPlaying)` | isPlaying: whether playback is in progress | Play / pause state changed |
 | `onSeekComplete()` | — | The seek finished |
 | `onComplete()` | — | Playback finished |
-| `onPlayingFluencyResult(fluentFactor, srcTime, detectTime)` | fluentFactor: Double, srcTime: Double, detectTime: Double | Playback smoothness measurement, taken once per second. `fluentFactor` is a smoothness coefficient in [0,1] — [0.65,1] counts as smooth, and -1 means the measurement failed. Empty default implementation |
+| `onPlayingFluencyResult(fluentFactor, srcTime, detectTime)` | fluentFactor: smoothness coefficient; srcTime: source time; detectTime: detection time | Playback smoothness measurement, taken once per second. A successful measurement returns `fluentFactor` in [0,1]; [0.65,1] counts as smooth, and -1 means the measurement failed. Empty default implementation |
 
 ---
 
@@ -624,7 +652,7 @@ interface PlayerViewListener
 | `onFail(exception: InstaException)` | exception: error details | An error occurred |
 | `onFirstFrameRendered()` | — | The first frame has been rendered |
 | `onReleaseCameraPipeline()` | — | The camera preview pipeline was released |
-| `isPanoLive(): Boolean` | — | Whether the current live stream is a panoramic live stream. Override it according to the actual live stream type; returns false by default |
+| `isPanoLive(): Boolean` | — | Whether the current live stream is a panoramic live stream; override it according to the actual live stream type. Returns false by default |
 
 ---
 
@@ -638,8 +666,8 @@ interface PlayerGestureListener
 
 | Callback | Description |
 |----------|-------------|
-| `onDown(event): Boolean` | Finger down; return true to consume the event |
-| `onTap(event): Boolean` | Tap; return true to consume the event |
+| `onDown(event): Boolean` | Finger down; return true to consume this event |
+| `onTap(event): Boolean` | Tap; return true to consume this event |
 | `onUp()` | Finger up |
 | `onLongPress(event)` | Long press |
 | `onZoom()` | Zoom gesture started |
@@ -651,9 +679,27 @@ interface PlayerGestureListener
 
 ---
 
+### PlayerListener
+
+General player event listener interface.
+
+```kotlin
+interface PlayerListener
+```
+
+| Callback | Parameters | Description |
+|----------|------------|-------------|
+| `onPlayPaused()` | — | Playback paused |
+| `onError(code, message)` | code: error code; message: error description | A playback error occurred |
+| `onProgressUpdate(positionMs, durationMs)` | positionMs: current playback position; durationMs: total media duration (milliseconds) | Playback progress updated |
+
+---
+
 ## 7. Rendering Configuration and Enums
 
 ### ExportMode
+
+Export mode; determines the image projection used for export.
 
 | Value | Description |
 |-------|-------------|
@@ -664,25 +710,27 @@ interface PlayerGestureListener
 
 ### OffsetType
 
-Specifies which accessory is mounted on the camera so the matching lens distortion correction parameters are applied.
+Lens offset type (accessory stitching offset). Specifies which accessory is mounted on the camera during playback or export so the matching lens distortion correction parameters are applied.
 
-| Value | Description |
-|-------|-------------|
-| `ORIGINAL` | No accessory; use the original offset |
-| `PROTECTOR_FASTEN` | Snap-on lens guard |
-| `DIVING_WATER` | Dive case, underwater (legacy) |
-| `DIVING_AIR` | Dive case, above water (legacy) |
-| `WATERPROOF` | Waterproof case |
-| `PROTECTOR_ADHERE` | Adhesive lens guard |
-| `DIVING_INVISIBLE_WATER` | Invisible dive case, underwater |
-| `DIVING_INVISIBLE_AIR` | Invisible dive case, above water |
-| `PROTECTOR_A` | Grade A lens guard (plastic, X3/X4) |
-| `PROTECTOR_S` | Grade S lens guard (glass, X3/X4) |
-| `PROTECTOR_AS_AVERAGE` | Averaged A/S lens guard (virtual combined parameters) |
+| Value | value | Description |
+|-------|-------|-------------|
+| `ORIGINAL` | 0 | No accessory; use the original offset |
+| `PROTECTOR_FASTEN` | 1 | Snap-on lens guard stitching |
+| `DIVING_WATER` | 2 | Dive case, underwater (legacy) |
+| `DIVING_AIR` | 3 | Dive case, above water (legacy) |
+| `WATERPROOF` | 4 | Waterproof case |
+| `PROTECTOR_ADHERE` | 5 | Adhesive lens guard stitching |
+| `DIVING_INVISIBLE_WATER` | 6 | Invisible dive case, underwater (fully invisible dive case) |
+| `DIVING_INVISIBLE_AIR` | 7 | Invisible dive case, above water (fully invisible dive case) |
+| `PROTECTOR_A` | 8 | Grade A lens guard (plastic); currently supported on X3 and X4 only |
+| `PROTECTOR_S` | 9 | Grade S lens guard (glass); currently supported on X3 and X4 only |
+| `PROTECTOR_AS_AVERAGE` | 10 | Averaged A/S lens guard (uses the combined average distortion curve of grades A and S; effectively a virtual lens guard) |
 
 ---
 
 ### StabType
+
+Stabilization algorithm type; specifies the stabilization strategy used by the player or during export.
 
 | Value | nativeValue | Description |
 |-------|-------------|-------------|
@@ -691,37 +739,50 @@ Specifies which accessory is mounted on the camera so the matching lens distorti
 | `STAB_STILL` | 0 | Full lock: the viewpoint is locked to an absolute direction; yaw, pitch and roll do not change |
 | `STAB_Z_DIRECTIONAL` | 1 | Z-axis stabilization: yaw follows, pitch and roll are locked; panoramic footage only |
 | `STAB_FULL_DIRECTIONAL` | 2 | Horizon leveling: yaw and pitch follow, roll is locked; panoramic footage only |
-| `STAB_FREE_FOOTAGE` | 4 | Motion smoothing: yaw, pitch and roll all follow the viewpoint with FlowState smoothing; also works for non-panoramic footage |
+| `STAB_FREE_FOOTAGE` | 4 | Motion smoothing: yaw, pitch and roll all follow the viewpoint but are smoothed by FlowState; also works for non-panoramic footage |
+
+> `StabType.nativeOf(value: Int?): StabType` — looks up the enum value matching the underlying raw value; returns `AUTO` if there is no match.
 
 ---
 
 ### RenderModel
 
+Rendering mode; determines how the panoramic image is projected during preview and playback.
+
 | Value | nativeValue | Description |
 |-------|-------------|-------------|
-| `AUTO` | 0 | Automatically fuse the two video streams |
-| `PLANE_STITCH` | 11 | Flat stitching (dual-lens fusion, laid flat) |
-| `PLANE` | 20 | Split plane (fisheye split-screen display) |
+| `PLANE_STITCH` | 11 | Split rendering: fuses the two video streams and lays the whole preview image flat on a single plane |
+| `PLANE` | 20 | Split rendering: divides the image into two parts and shows the two video streams separately as fisheye images |
+| `AUTO` | 0 | Fused rendering: fuses the two video streams into one complete preview image |
 
 ---
 
 ### DisplayType
 
-| Value | rawValue | Description |
-|-------|----------|-------------|
-| `Auto` | 0 | Automatic |
-| `SphereStitch` | 2 | Spherical stitching |
-| `SphereEquirectangular` | 3 | Spherical equirectangular |
-| `SphereFisheyeDewarp` | 4 | Spherical fisheye dewarping |
-| `PlaneStitch` | 11 | Flat stitching |
-| `PlaneEquirectangular` | 12 | Flat equirectangular |
-| `PlaneFisheyeDewarp` | 13 | Flat fisheye dewarping |
-| `Plane` | 20 | Plain flat |
-| *(and others)* | — | See `DisplayType.kt` in the source for the full list |
+Video / image rendering display type.
+
+| Value | rawValue |
+|-------|----------|
+| `Auto` | 0 |
+| `SphereAuto` | 1 |
+| `SphereStitch` | 2 |
+| `SphereEquirectangular` | 3 |
+| `SphereFisheyeDewarp` | 4 |
+| `CubeTileProjection` | 5 |
+| `SphereCubemap` | 6 |
+| `PlaneCubemap2Equi` | 7 |
+| `PlaneCubeTile2Equi` | 8 |
+| `PlaneAuto` | 10 |
+| `PlaneStitch` | 11 |
+| `PlaneEquirectangular` | 12 |
+| `PlaneFisheyeDewarp` | 13 |
+| `Plane` | 20 |
 
 ---
 
 ### OpticalFlowType
+
+Optical flow algorithm type.
 
 | Value | rawValue | Description |
 |-------|----------|-------------|
@@ -733,13 +794,17 @@ Specifies which accessory is mounted on the camera so the matching lens distorti
 
 ### ImageLayout
 
+Image layout.
+
 | Value | rawValue | Description |
 |-------|----------|-------------|
 | `HorizontalMerged` | 0 | Horizontally merged |
 | `OneBulletTime` | 1 | Single Bullet Time frame |
-| `Respective2Images` | 2 | Two independent images (default) |
-| `LeftHalf` / `RightHalf` | 3 / 4 | Left half / right half |
-| `TopHalf` / `BottomHalf` | 5 / 6 | Top half / bottom half |
+| `Respective2Images` | 2 | Two independent images |
+| `LeftHalf` | 3 | Left half |
+| `RightHalf` | 4 | Right half |
+| `TopHalf` | 5 | Top half |
+| `BottomHalf` | 6 | Bottom half |
 | `LeftRight` | 7 | Left-right split |
 | `TopBottom` | 8 | Top-bottom split |
 
@@ -747,21 +812,24 @@ Specifies which accessory is mounted on the camera so the matching lens distorti
 
 ### ProtectOffsetConvertOption
 
-A bit-flag enum that specifies the lens guard or accessory type; values can be combined with a bitwise OR.
+Lens guard accessory type; a bit-flag enum whose values can be combined with a bitwise OR.
 
-| Value | Description |
-|-------|-------------|
-| `None` | No accessory |
-| `EnableWaterProof` | Waterproof case |
-| `EnableDivingAir` / `EnableDivingWater` | Dive case (legacy, above water / underwater) |
-| `EnableDivingAirV2` / `EnableDivingWaterV2` | Dive case (new, above water / underwater) |
-| `EnableBuckleShell` | Snap-on protective shell |
-| `EnableAdhesiveShell` | Adhesive protective shell |
-| `EnableGlassShell` | Glass protective shell |
-| `EnablePlasticCement` | Plastic protective shell |
-| `EnableAverageShell` | Averaged protective shell |
-| `EnableNDFilter` | ND filter |
-| `EnableDivingWaterPro` / `EnableDivingAirPro` | Dive case Pro |
+| Value | rawValue |
+|-------|----------|
+| `None` | 0 |
+| `EnableWaterProof` | 1 shl 0 |
+| `EnableDivingAir` | 1 shl 1 |
+| `EnableDivingWater` | 1 shl 2 |
+| `EnableDivingAirV2` | 1 shl 3 |
+| `EnableDivingWaterV2` | 1 shl 4 |
+| `EnableBuckleShell` | 1 shl 5 |
+| `EnableAdhesiveShell` | 1 shl 6 |
+| `EnableGlassShell` | 1 shl 7 |
+| `EnablePlasticCement` | 1 shl 8 |
+| `EnableAverageShell` | 1 shl 9 |
+| `EnableNDFilter` | 1 shl 10 |
+| `EnableDivingWaterPro` | 1 shl 11 |
+| `EnableDivingAirPro` | 1 shl 12 |
 
 ---
 
@@ -782,9 +850,9 @@ Specifies a video's source and playback range. Provide either `inputUrl` or `wra
 ```kotlin
 data class VideoClipInfo(
     val inputUrl: String?,     // File path (file:/// or absolute); alternative to wrapper
-    val wrapper: WorkWrapper?, // Takes precedence over inputUrl
-    val startTimeMs: Int,      // Start position (milliseconds)
-    val endTimeMs: Int         // End position (milliseconds)
+    val wrapper: WorkWrapper?, // Media file wrapper; takes higher precedence
+    val startTimeMs: Int,      // Clip start position (milliseconds)
+    val endTimeMs: Int         // Clip end position (milliseconds)
 )
 ```
 
@@ -792,33 +860,29 @@ data class VideoClipInfo(
 
 ## 8. Shared Data Types
 
-The types below are shared between the Media and Camera modules and are listed here for reference.
+The types below are shared by the Camera SDK and the Media SDK and are listed here for reference.
 
 ### KMPCameraPreviewPipeline
 
-Defined in `verticalCommon` and used on both the Camera and Media sides:
+Used in both the Camera SDK and the Media SDK:
 
-- Camera side: `CameraPreview.setPipeline(pipeline)` — inject the pipeline into the camera preview
-- Media side: `PreviewPlayer.getPipeline()` — get the current rendering pipeline
+- Camera SDK: `CameraPreview.setPipeline(pipeline)` — inject the pipeline into the camera preview
+- Media SDK: `PreviewPlayer.getPipeline()` — get the current rendering pipeline
 
-The pipeline object is created on the media side and passed to the camera side, where it serves as the transport channel for preview data.
+The pipeline object is created on the Media SDK side and passed to the camera side, where it serves as the transport channel for preview data.
 
 ---
 
 ### PreviewStreamParamsUpdate (Camera → Media)
 
-When the camera's preview stream parameters change, this object is delivered through `CameraStreamListener.onParamsChanged()`.
-On the media side you typically use its data to call `PreviewPlayer.setOffset()` and `setWindowCropInfo()` and keep the player in sync.
+When the camera's preview stream parameters change, this object is delivered through `CameraStreamListener.onParamsChanged()`. On the media side, `PreviewPlayer.setWindowCropInfo()` is typically updated from the crop window in this object. The player maintains `offsetData` and `stabOffset` itself from the camera configuration, and the corresponding `setOffset()` is deprecated as an empty implementation.
+
+---
+
+### ModelManager
+
+The model management entry point; it has no public members in the current version.
 
 ```kotlin
-data class PreviewStreamParamsUpdate(
-    val windowCropInfo: WindowCropInfo?,
-    val offsetData: CameraPreviewOffsetData?,
-    val stabOffset: String?,
-    val previewWidth: Int,
-    val previewHeight: Int,
-    val previewFps: Int,
-)
+object ModelManager
 ```
-
-For details, see [§4 Live Preview](../camera-api/#_4-live-preview) in the Camera API reference.
